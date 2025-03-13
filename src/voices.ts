@@ -6,7 +6,7 @@ import { Transport } from './transport';
 export const Voice = z.object({
   id: z.string(),
   name: z.string(),
-  tag: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
   model_availability: z.array(z.string()),
   created_at: z.string(),
   updated_at: z.string(),
@@ -118,7 +118,8 @@ export class Voices {
 
   async clone({
     voiceName,
-    voiceFilePath
+    voiceFilePath,
+    voiceTags
   }: {
     voiceName: string;
     voiceFilePath: string;
@@ -132,7 +133,10 @@ export class Voices {
 
     const response = await this.transport.upload(
       'voices',
-      { voice_name: voiceName },
+      {
+        voice_name: voiceName,
+        voice_tags: voiceTags ? voiceTags.join(', ') : undefined
+      },
       formData
     );
 

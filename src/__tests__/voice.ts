@@ -4,49 +4,63 @@ describe('Voice', () => {
   test('List', async () => {
     const client = createClient();
 
-    console.log(await client.voices.list());
+    const voices = await client.voices.list();
+
+    expect(voices.length).toBeGreaterThan(0);
+
+    expect(voices[0]).toHaveProperty('id');
+    expect(voices[0]).toHaveProperty('name');
   });
 
   test('Get', async () => {
     const client = createClient();
 
-    console.log(
-      await client.voices.get({ id: 'f2185de7-e09b-46d7-9b20-8c82ef90524f' })
-    );
+    const voices = await client.voices.list();
+
+    const id = voices[0]!.id;
+    const voice = await client.voices.get({ id });
+
+    expect(voice.id).toBe(id);
   });
 
   test('Clone', async () => {
     const client = createClient();
 
-    console.log(
-      await client.voices.clone({
-        voiceName: 'Wyatt_3',
-        voiceFilePath: __dirname + '/../../data.wav',
-        voiceTags: []
-      })
-    );
-  });
+    const id = await client.voices.clone({
+      voiceName: 'Cloned Name',
+      voiceFilePath: __dirname + '/data/voice1.wav',
+      voiceTags: ['Tag 1']
+    });
 
-  test('Delete', async () => {
-    const client = createClient();
+    expect(id).toBeDefined();
 
-    console.log(
-      await client.voices.delete({
-        id: '8d5cc493-0a2f-44b3-ad39-c1e505766174'
-      })
-    );
-  });
+    const voice = await client.voices.get({ id });
+
+    expect(voice.id).toBe(id);
+    expect(voice.name).toBe('Cloned Name');
+    expect(voice.tags).toEqual(['Tag 1']);
+  }, 10000);
 
   test('Update', async () => {
     const client = createClient();
 
-    console.log(
-      await client.voices.update({
-        id: '0a209008-8a00-4034-abcf-fb867919eaa6',
-        // newVoiceName: 'Wyatt_10',
-        // newVoiceFilePath: __dirname + '/../../data.wav',
-        newVoiceTags: ['x', 'y']
-      })
-    );
+    const voiceUpdated = await client.voices.update({
+      name: 'Cloned Name',
+      newVoiceFilePath: __dirname + '/data/voice1.wav',
+      newVoiceTags: ['Tag 2', 'Tag 3']
+    });
+    expect(voiceUpdated).toBeTruthy();
+
+    const voice = await client.voices.get({ name: 'Cloned Name' });
+    expect(voice.name).toBe('Cloned Name');
+  }, 10000);
+
+  test('Delete', async () => {
+    const client = createClient();
+
+    const voiceDeleted = await client.voices.delete({
+      name: 'Cloned Name'
+    });
+    expect(voiceDeleted).toBeTruthy();
   });
 });

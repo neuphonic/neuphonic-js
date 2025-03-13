@@ -129,7 +129,7 @@ export class Restorations {
     const { data: result } = AudioRestoreDeleteResponse.safeParse(response);
 
     if (result && 'data' in result) {
-      return result.data.status === 'Finished';
+      return result.data.status === 'Finished' || result.data.status === 'Not Finished';
     }
 
     throw new Error('Unknown audio restorations delete error');
