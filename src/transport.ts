@@ -7,8 +7,8 @@ type FetchParams = Parameters<typeof fetch>;
 type FetchResponse = ReturnType<typeof fetch>;
 
 export class Transport {
-  private headers: Record<string, string>;
-  private config: TransportConfig;
+  readonly headers: Record<string, string>;
+  readonly config: TransportConfig;
 
   constructor(config: TransportConfig) {
     this.config = config;
@@ -46,9 +46,7 @@ export class Transport {
     query?: Record<string, string | number>;
     body?: Record<string, unknown>;
   }): Promise<any> {
-    const finalUrl = `https://${this.config.baseURL}/${url}${this.paramsToQs(query)}`;
-
-    const response = await this.fetch(finalUrl, {
+    const response = await this.fetch(this.url('https', url, query), {
       method,
       headers: this.headers,
       ...(body
@@ -71,21 +69,26 @@ export class Transport {
     formData: FormData,
     method = 'POST'
   ): Promise<any> {
-    const response = await this.fetch(
-      `https://${this.config.baseURL}/${url}${this.paramsToQs(query)}`,
-      {
-        method,
-        headers: {
-          'x-api-key': this.config.apiKey
-        },
-        body: formData
-      }
-    );
+    const response = await this.fetch(this.url('https', url, query), {
+      method,
+      headers: {
+        'x-api-key': this.config.apiKey
+      },
+      body: formData
+    });
 
     try {
       return await response.json();
     } catch (err) {
       return undefined;
     }
+  }
+
+  url(
+    protocol: string,
+    path: string,
+    query?: Record<string, string | number | undefined>
+  ) {
+    return `${protocol}://${this.config.baseURL}/${path}${this.paramsToQs(query)}`;
   }
 }

@@ -1,2 +1,6 @@
 .DS_store
+.idea
+.github
 node_modules
+src
+dist/__tests__

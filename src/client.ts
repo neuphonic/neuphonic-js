@@ -1,6 +1,7 @@
 import { Transport } from './transport';
 import { Voices } from './voices';
 import { Restorations } from './restorations';
+import { Tts } from './tts';
 import { apiKey, baseURL } from './env';
 
 export interface ClientConfig {
@@ -9,14 +10,16 @@ export interface ClientConfig {
 }
 
 export class Client {
-  config: ClientConfig;
+  readonly config: ClientConfig;
   readonly voices: Voices;
   readonly restorations: Restorations;
+  readonly tts: Tts;
 
   constructor(config: ClientConfig, transport: Transport) {
     this.config = config;
     this.voices = new Voices(transport);
     this.restorations = new Restorations(transport);
+    this.tts = new Tts(transport);
   }
 }
 

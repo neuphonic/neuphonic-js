@@ -2,12 +2,13 @@ Neuphonic Typescript SDK
 ========================
 
 The official Neuphonic Typescript (Javascript) library providing simple, convenient access to the 
-Neuphonic text-to-speech websocket API from any NodeJS or browser application.
+Neuphonic text-to-speech websocket API from any Node.js or browser application.
 
 For comprehensive guides and official documentation, check out [https://docs.neuphonic.com](https://docs.neuphonic.com).
 For the Python SDK visit [PyNeuphonic](https://github.com/neuphonic/pyneuphonic).
 If you need support or want to join the community, visit our [Discord](https://discord.gg/G258vva7gZ)!
 
+- [Examples](#Examples)
 - [Installation](#installation)
     - [API Key](#api-key)
 - [Voices](#voices)
@@ -23,9 +24,12 @@ If you need support or want to join the community, visit our [Discord](https://d
     - [Restoration with a Transcript and Language Code](#restoration-with-a-transcript-and-language-code)
     - [Restoration with a Transcript File](#restoration-with-a-transcript-file)
 
+## Examples
+Example applications can be found in a separate repository: https://github.com/neuphonic/neuphonic-js-examples.
+
 ## Installation
 Install this package into your environment using your chosen package manager:
-
+[README.md](README.md)
 ```bash
 npm install @neuphonic/neuphonic-js
 ```
