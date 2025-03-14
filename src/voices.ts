@@ -1,7 +1,7 @@
 import z from 'zod';
-import fs from 'fs/promises';
 
 import { Transport } from './transport';
+import { voiceFile } from './files';
 
 export const Voice = z.object({
   id: z.string(),
@@ -125,11 +125,10 @@ export class Voices {
     voiceFilePath: string;
     voiceTags?: string[];
   }): Promise<string> {
-    const file = await fs.readFile(voiceFilePath);
-    const fileBlob = new Blob([file], { type: 'audio/wav' });
+    const [fileBlob, fileName] = await voiceFile(voiceFilePath);
 
     const formData = new FormData();
-    formData.append('voice_file', fileBlob, 'audio.wav');
+    formData.append('voice_file', fileBlob, fileName);
 
     const response = await this.transport.upload(
       'voices',
@@ -206,9 +205,8 @@ export class Voices {
 
     const formData = new FormData();
     if (params.newVoiceFilePath && params.newVoiceFilePath) {
-      const file = await fs.readFile(params.newVoiceFilePath);
-      const fileBlob = new Blob([file], { type: 'audio/wav' });
-      formData.append('new_voice_file', fileBlob, 'audio.wav');
+      const [fileBlob, fileName] = await voiceFile(params.newVoiceFilePath);
+      formData.append('new_voice_file', fileBlob, fileName);
     }
 
     const response = await this.transport.upload(

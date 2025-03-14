@@ -1,6 +1,6 @@
 {
   "name": "@neuphonic/neuphonic-js",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "The official Neuphonic Typescript (Javascript) library ",
   "author": "Neuphonic Team",
   "repository": "https://github.com/neuphonic/neuphonic-js",

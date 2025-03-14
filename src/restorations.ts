@@ -1,7 +1,9 @@
-import fs from 'fs/promises';
+// import fs from 'fs/promises';
 import z from 'zod';
+// import path from 'path';
 
 import { Transport } from './transport';
+import { transcriptFile, voiceFile } from './files';
 
 const RestoreError = z.object({
   detail: z.union([z.string(), z.array(z.object({}))])
@@ -68,17 +70,14 @@ export class Restorations {
       lang_code: params.langCode || 'eng-us'
     };
 
-    const file = await fs.readFile(params.audioPath);
-    const fileBlob = new Blob([file], { type: 'audio/wav' });
+    const [fileBlob, fileName] = await voiceFile(params.audioPath);
 
     const formData = new FormData();
-    formData.append('audio_file', fileBlob, 'audio.wav');
+    formData.append('audio_file', fileBlob, fileName);
 
     if (params.isTranscriptFile && params.transcript) {
-      const file = await fs.readFile(params.transcript);
-      const fileBlob = new Blob([file], { type: 'text/plain' });
-
-      formData.append('transcript', fileBlob, 'transcript.txt');
+      const [fileBlob, fileName] = await transcriptFile(params.transcript);
+      formData.append('transcript', fileBlob, fileName);
     } else {
       data.transcript = params.transcript || '';
     }
@@ -129,7 +128,10 @@ export class Restorations {
     const { data: result } = AudioRestoreDeleteResponse.safeParse(response);
 
     if (result && 'data' in result) {
-      return result.data.status === 'Finished' || result.data.status === 'Not Finished';
+      return (
+        result.data.status === 'Finished' ||
+        result.data.status === 'Not Finished'
+      );
     }
 
     throw new Error('Unknown audio restorations delete error');
