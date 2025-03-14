@@ -5,7 +5,7 @@ import { Base64 } from 'js-base64';
 import { Transport } from './transport';
 
 export type TtsConfig = {
-  voice_id: string;
+  voice_id?: string;
   speed?: number;
   temperature?: number;
   lang_code?: string;
