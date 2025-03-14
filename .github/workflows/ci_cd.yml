@@ -8,8 +8,8 @@ on:
       - main
 
 env:
-  BASE_URL: eu-west-1.qa.api.neuphonic.com
-  API_KEY: ${{ secrets.API_KEY }}
+  NEUPHONIC_BASE_URL: eu-west-1.qa.api.neuphonic.com
+  NEUPHONIC_API_KEY: ${{ secrets.API_KEY }}
 
 jobs:
   tests:
