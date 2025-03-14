@@ -7,7 +7,7 @@ export const Voice = z.object({
   id: z.string(),
   name: z.string(),
   tags: z.array(z.string()).optional(),
-  model_availability: z.array(z.string()),
+  model_availability: z.array(z.string()).optional(),
   created_at: z.string(),
   updated_at: z.string(),
   type: z.string(),
