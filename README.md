@@ -10,26 +10,29 @@ If you need support or want to join the community, visit our [Discord](https://d
 
 - [Examples](#Examples)
 - [Installation](#installation)
-    - [API Key](#api-key)
+  - [API Key](#api-key)
 - [Voices](#voices)
-    - [Get Voices](#get-voices)
-    - [Get Voice](#get-voice)
-    - [Clone Voice](#clone-voice)
-    - [Update Voice](#update-voice)
-    - [Delete Voice](#delete-voice)
+  - [Get Voices](#get-voices)
+  - [Get Voice](#get-voice)
+  - [Clone Voice](#clone-voice)
+  - [Update Voice](#update-voice)
+  - [Delete Voice](#delete-voice)
 - [Speech Restoration](#speech-restoration)
-    - [Basic Restoration](#basic-restoration)
-    - [Get Status of Restoration Job / Retrieve Results](#get-status-of-restoration-job--retrieve-results)
-    - [List all Active and Historic Jobs](#list-all-active-and-historic-jobs)
-    - [Restoration with a Transcript and Language Code](#restoration-with-a-transcript-and-language-code)
-    - [Restoration with a Transcript File](#restoration-with-a-transcript-file)
+  - [Basic Restoration](#basic-restoration)
+  - [Get Status of Restoration Job / Retrieve Results](#get-status-of-restoration-job--retrieve-results)
+  - [List all Active and Historic Jobs](#list-all-active-and-historic-jobs)
+  - [Restoration with a Transcript and Language Code](#restoration-with-a-transcript-and-language-code)
+  - [Restoration with a Transcript File](#restoration-with-a-transcript-file)
+- [Audio Generation](#audio-generation)
+  - [Configure the Text-to-Speech Synthesis](#configure-the-text-to-speech-synthesis)
+  - [SSE (Server Side Events)](#sse-server-side-events)
+  - [Websocket](#websocket)
 
 ## Examples
 Example applications can be found in a separate repository: https://github.com/neuphonic/neuphonic-js-examples.
 
 ## Installation
 Install this package into your environment using your chosen package manager:
-[README.md](README.md)
 ```bash
 npm install @neuphonic/neuphonic-js
 ```
@@ -206,3 +209,85 @@ console.log(
 
 **Note:** Providing a transcript significantly improves the restoration quality of your audio clip. If no transcript is provided, the output may not be as refined.
 
+## Audio Generation
+
+### Configure the Text-to-Speech Synthesis
+The following parameters are examples of parameters which can be adjusted. Ensure that the selected combination of model, language, and voice is valid. For details on supported combinations, refer to the [Models](https://docs.neuphonic.com/resources/models) and [Voices](https://docs.neuphonic.com/resources/voices) pages.
+
+- **`lang_code`**
+  Language code for the desired language.
+
+  **Default**: `'en'` **Examples**: `'en'`, `'es'`, `'de'`, `'nl'`
+
+- **`voice_id`**
+  The voice ID for the desired voice. Ensure this voice ID is available for the selected model and language.
+
+  **Default**: `None` **Examples**: `'8e9c4bc8-3979-48ab-8626-df53befc2090'`
+
+- **`speed`**
+  Playback speed of the audio.
+
+  **Default**: `1.0`
+  **Examples**: `0.7`, `1.0`, `1.5`
+
+### SSE (Server Side Events)
+```typescript
+import fs from 'fs';
+import { createClient, toWav } from '@neuphonic/neuphonic-js';
+const client = createClient();
+
+const msg = `Hello how are you?<STOP>`;
+
+const sse = await client.tts.sse({
+  speed: 1.15,
+  lang_code: 'en',
+  voice_id: 'e564ba7e-aa8d-46a2-96a8-8dffedade48f'
+});
+
+const res = await sse.send(msg);
+
+// Saving data to file
+const wav = toWav(res.audio);
+fs.writeFileSync(__dirname + 'sse.wav', wav);
+```
+
+### Websocket
+```typescript
+import fs from 'fs';
+import { createClient, toWav } from '@neuphonic/neuphonic-js';
+const client = createClient();
+
+const msg = `Hello how are you?<STOP>`;
+
+const ws = await client.tts.websocket({
+  speed: 1.15,
+  lang_code: 'en',
+  voice_id: 'e564ba7e-aa8d-46a2-96a8-8dffedade48f'
+});
+
+let byteLen = 0;
+const chunks = [];
+
+// Websocket allow us to get chunk of the data as soon as they ready
+// which can make API more responsve 
+for await (const chunk of ws.send(msg)) {
+  // here you can send the data to the client
+  // or collect it in array and save as a file
+  chunks.push(chunk.audio);
+  byteLen += chunk.audio.byteLength;
+}
+
+// Merging all chunks into single Uint8Array array
+let offset = 0;
+const allAudio = new Uint8Array(byteLen);
+chunks.forEach(chunk => {
+  allAudio.set(chunk, offset);
+  offset += chunk.byteLength;
+})
+
+// Saving data to file
+const wav = toWav(allAudio);
+fs.writeFileSync(__dirname + '/data/ws.wav', wav);
+
+await ws.close(); // closing the socket if we don't want to send anything
+```
