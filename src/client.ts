@@ -1,6 +1,7 @@
 import { Transport } from './transport';
 import { Voices } from './voices';
 import { Restorations } from './restorations';
+import { Agents } from './agents';
 import { Tts } from './tts';
 import { apiKey, baseURL } from './env';
 
@@ -13,12 +14,14 @@ export class Client {
   readonly config: ClientConfig;
   readonly voices: Voices;
   readonly restorations: Restorations;
+  readonly agents: Agents;
   readonly tts: Tts;
 
   constructor(config: ClientConfig, transport: Transport) {
     this.config = config;
     this.voices = new Voices(transport);
     this.restorations = new Restorations(transport);
+    this.agents = new Agents(transport);
     this.tts = new Tts(transport);
   }
 }
