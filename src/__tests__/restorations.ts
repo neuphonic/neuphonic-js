@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 import { createClient } from '../client';
 
 describe('Restorations', () => {
@@ -7,6 +9,23 @@ describe('Restorations', () => {
     const jobId = await client.restorations.restore({
       audioPath: __dirname + '/data/voice1.wav',
       transcript: __dirname + '/data/transcript.txt',
+      isTranscriptFile: true
+    });
+
+    expect(jobId).toBeTruthy();
+  }, 10000);
+
+  it('Restore readable', async () => {
+    const client = createClient();
+    
+    const voiceStream = fs.createReadStream(__dirname + '/data/voice1.wav');
+    const transcriptStream = fs.createReadStream(__dirname + '/data/transcript.txt');
+
+    const jobId = await client.restorations.restore({
+      audioPath: voiceStream,
+      audioName: 'voice1.wav',
+      transcript: transcriptStream,
+      transcriptName: 'transcript.txt',
       isTranscriptFile: true
     });
 
@@ -41,13 +60,16 @@ describe('Restorations', () => {
     const client = createClient();
 
     const jobs = await client.restorations.list();
-    expect(jobs.length).toBeGreaterThan(0);
+    expect(jobs.length).toBeGreaterThan(1);
 
-    const jobId = jobs[0]!.job_id;
-
-    const jobDeleted = await client.restorations.delete({
-      jobId
+    const jobDeleted1 = await client.restorations.delete({
+      jobId: jobs[0]!.job_id
     });
-    expect(jobDeleted).toBeTruthy();
+    expect(jobDeleted1).toBeTruthy();
+
+    const jobDeleted2 = await client.restorations.delete({
+      jobId: jobs[1]!.job_id
+    });
+    expect(jobDeleted2).toBeTruthy();
   });
 });

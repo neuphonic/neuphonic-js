@@ -69,13 +69,27 @@ console.log(
 To clone a voice based on a audio file, you can run the following snippet.
 
 ```typescript
+import fs from 'fs';
 import { createClient } from '@neuphonic/neuphonic-js';
 const client = createClient();
 
+// Providing the file name
 console.log(
   await client.voices.clone({
     voiceName: 'Voice name',
     voiceFilePath: __dirname + '/data.wav',
+    voiceTags: ['Tag 1']
+  })
+);
+
+// Providing the readable stream
+const voiceStream = fs.createReadStream(__dirname + '/data.wav');
+
+console.log(
+  await client.voices.clone({
+    voiceName: 'Voice name',
+    voiceFilePath: voiceStream,
+    voiceFileName: 'data.wav',
     voiceTags: ['Tag 1']
   })
 );
@@ -99,11 +113,25 @@ You can select which voice to update using either it's `voice_id` or it's name.
 import { createClient } from '@neuphonic/neuphonic-js';
 const client = createClient();
 
+// Providing the file name 
 console.log(
   await client.voices.update({
     id: '<VOICE_ID>', // you can also use voice 'name' here instead of id  
     newVoiceName: 'New name',
     newVoiceFilePath: __dirname + '/data.wav',
+    newVoiceTags: ['Tag 2']
+  })
+);
+
+// Providing the readable stream
+const voiceStream = fs.createReadStream(__dirname + '/data.wav');
+
+console.log(
+  await client.voices.update({
+    id: '<VOICE_ID>', // you can also use voice 'name' here instead of id  
+    newVoiceName: 'New name',
+    newVoiceFilePath: voiceStream,
+    newVoiceFileName: 'data.wav'
     newVoiceTags: ['Tag 2']
   })
 );
@@ -193,15 +221,31 @@ console.log(
 If you have the transcript stored in a file, you can use it instead of a transcript string:
 
 ```typescript
+import fs from 'fs';
 import { createClient } from '@neuphonic/neuphonic-js';
 const client = createClient();
 
+// Providing the file name
 console.log(
   await client.restorations.restore({
     audioPath: __dirname + '/data.wav',
     transcript: __dirname + '/transcript.txt',
     isTranscriptFile: true
   })
+);
+
+// Providing the readable stream
+const voiceStream = fs.createReadStream(__dirname + '/data.wav');
+const transcriptStream = fs.createReadStream(__dirname + '/transcript.txt');
+
+console.log(
+  await client.restorations.restore({
+      audioPath: voiceStream,
+      audioName: 'voice1.wav',
+      transcript: transcriptStream,
+      transcriptName: 'transcript.txt',
+      isTranscriptFile: true
+    })
 );
 ```
 

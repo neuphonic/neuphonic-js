@@ -1,7 +1,7 @@
 import z from 'zod';
 
 import { Transport } from './transport';
-import { voiceFile } from './files';
+import { voiceFile, Reading } from './files';
 
 export const Voice = z.object({
   id: z.string(),
@@ -119,13 +119,15 @@ export class Voices {
   async clone({
     voiceName,
     voiceFilePath,
+    voiceFileName,
     voiceTags
   }: {
     voiceName: string;
-    voiceFilePath: string;
+    voiceFilePath: string | Reading;
+    voiceFileName?: string;
     voiceTags?: string[];
   }): Promise<string> {
-    const [fileBlob, fileName] = await voiceFile(voiceFilePath);
+    const [fileBlob, fileName] = await voiceFile(voiceFilePath, voiceFileName);
 
     const formData = new FormData();
     formData.append('voice_file', fileBlob, fileName);
@@ -185,7 +187,8 @@ export class Voices {
 
   async update(
     params: IdOrName & {
-      newVoiceFilePath?: string;
+      newVoiceFilePath: string | Reading;
+      newVoiceFileName?: string;
       newVoiceName?: string;
       newVoiceTags?: string[];
     }
@@ -205,7 +208,10 @@ export class Voices {
 
     const formData = new FormData();
     if (params.newVoiceFilePath && params.newVoiceFilePath) {
-      const [fileBlob, fileName] = await voiceFile(params.newVoiceFilePath);
+      const [fileBlob, fileName] = await voiceFile(
+        params.newVoiceFilePath,
+        params.newVoiceFileName
+      );
       formData.append('new_voice_file', fileBlob, fileName);
     }
 

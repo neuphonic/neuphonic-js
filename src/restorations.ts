@@ -1,9 +1,7 @@
-// import fs from 'fs/promises';
 import z from 'zod';
-// import path from 'path';
 
 import { Transport } from './transport';
-import { transcriptFile, voiceFile } from './files';
+import { transcriptFile, voiceFile, Reading } from './files';
 
 const RestoreError = z.object({
   detail: z.union([z.string(), z.array(z.object({}))])
@@ -61,8 +59,10 @@ export class Restorations {
   }
 
   async restore(params: {
-    audioPath: string;
-    transcript?: string;
+    audioPath: string | Reading;
+    audioName?: string;
+    transcript?: string | Reading;
+    transcriptName?: string;
     langCode?: string;
     isTranscriptFile?: boolean;
   }): Promise<string> {
@@ -70,16 +70,22 @@ export class Restorations {
       lang_code: params.langCode || 'eng-us'
     };
 
-    const [fileBlob, fileName] = await voiceFile(params.audioPath);
+    const [fileBlob, fileName] = await voiceFile(
+      params.audioPath,
+      params.audioName
+    );
 
     const formData = new FormData();
     formData.append('audio_file', fileBlob, fileName);
 
     if (params.isTranscriptFile && params.transcript) {
-      const [fileBlob, fileName] = await transcriptFile(params.transcript);
+      const [fileBlob, fileName] = await transcriptFile(
+        params.transcript,
+        params.transcriptName
+      );
       formData.append('transcript', fileBlob, fileName);
     } else {
-      data.transcript = params.transcript || '';
+      data.transcript = (params.transcript as string) || '';
     }
 
     const response = await this.transport.upload('restore', data, formData);
