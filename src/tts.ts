@@ -123,7 +123,7 @@ export class Tts {
     const finalUrl = this.transport.url(
       'wss',
       `speak/${params['lang_code'] || 'en'}`,
-      { api_key: this.transport.config.apiKey }
+      { ...params, api_key: this.transport.config.apiKey }
     );
 
     return new Promise((resolveConnect, rejectConnectErr) => {

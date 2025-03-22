@@ -94,14 +94,18 @@ describe('Voice', () => {
   test('Delete', async () => {
     const client = createClient();
 
-    const voiceDeleted1 = await client.voices.delete({
+    const voiceDeleted = await client.voices.delete({
       name: 'Cloned Name'
     });
-    expect(voiceDeleted1).toBeTruthy();
+    expect(voiceDeleted).toBeTruthy();
+  });
 
-    const voiceDeleted2 = await client.voices.delete({
+  test('Delete readable', async () => {
+    const client = createClient();
+
+    const voiceDeleted = await client.voices.delete({
       name: 'Cloned Readbale Name'
     });
-    expect(voiceDeleted2).toBeTruthy();
+    expect(voiceDeleted).toBeTruthy();
   });
 });
