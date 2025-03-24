@@ -11,22 +11,31 @@ If you need support or want to join the community, visit our [Discord](https://d
 - [Examples](#Examples)
 - [Installation](#installation)
   - [API Key](#api-key)
-- [Voices](#voices)
-  - [Get Voices](#get-voices)
-  - [Get Voice](#get-voice)
-  - [Clone Voice](#clone-voice)
-  - [Update Voice](#update-voice)
-  - [Delete Voice](#delete-voice)
-- [Speech Restoration](#speech-restoration)
-  - [Basic Restoration](#basic-restoration)
-  - [Get Status of Restoration Job / Retrieve Results](#get-status-of-restoration-job--retrieve-results)
-  - [List all Active and Historic Jobs](#list-all-active-and-historic-jobs)
-  - [Restoration with a Transcript and Language Code](#restoration-with-a-transcript-and-language-code)
-  - [Restoration with a Transcript File](#restoration-with-a-transcript-file)
-- [Audio Generation](#audio-generation)
-  - [Configure the Text-to-Speech Synthesis](#configure-the-text-to-speech-synthesis)
-  - [SSE (Server Side Events)](#sse-server-side-events)
-  - [Websocket](#websocket)
+- [Server side](#server-side)
+  - [Voices](#voices)
+    - [Get Voices](#get-voices)
+    - [Get Voice](#get-voice)
+    - [Clone Voice](#clone-voice)
+    - [Update Voice](#update-voice)
+    - [Delete Voice](#delete-voice)
+  - [Agents](#agents)
+    - [Create agent](#create-agent)
+    - [List agents](#list-agents)
+    - [Get agent](#get-agent)
+    - [Delete agent](#delete-agent)
+  - [Speech Restoration](#speech-restoration)
+    - [Basic Restoration](#basic-restoration)
+    - [Get Status of Restoration Job / Retrieve Results](#get-status-of-restoration-job--retrieve-results)
+    - [List all Active and Historic Jobs](#list-all-active-and-historic-jobs)
+    - [Restoration with a Transcript and Language Code](#restoration-with-a-transcript-and-language-code)
+    - [Restoration with a Transcript File](#restoration-with-a-transcript-file)
+  - [Audio Generation](#audio-generation)
+    - [Configure the Text-to-Speech Synthesis](#configure-the-text-to-speech-synthesis)
+    - [SSE (Server Side Events)](#sse-server-side-events)
+    - [Websocket](#websocket)
+- [Client side](#client-side)
+  - [Authentication](#authentication)
+  - [Using agents](#using-agents)
 
 ## Examples
 Example applications can be found in a separate repository: https://github.com/neuphonic/neuphonic-js-examples.
@@ -39,6 +48,10 @@ npm install @neuphonic/neuphonic-js
 
 ### API Key
 Get your API key from the [Neuphonic website](https://beta.neuphonic.com).
+
+#### Server side
+
+The following API requires an `API key` and is primarily intended for server-side use.
 
 ## Voices
 
@@ -148,6 +161,57 @@ const client = createClient();
 console.log(
   await client.voices.delete({
     id: '<VOICE_ID>'
+  })
+);
+```
+
+## Agents
+
+With Agents, you can create, manage, and interact with intelligent AI assistants. 
+
+### Create agent
+
+```typescript
+import { createClient } from '@neuphonic/neuphonic-js';
+const client = createClient();
+
+console.log(
+  await client.agents.create({
+    name: 'My Agent',
+    prompt: 'Hey',
+    greeting: 'Greet',
+  })
+);
+```
+
+### List agents
+```typescript
+import { createClient } from '@neuphonic/neuphonic-js';
+const client = createClient();
+
+console.log(
+  await client.agents.list()
+);
+```
+
+### Get agent
+```typescript
+import { createClient } from '@neuphonic/neuphonic-js';
+const client = createClient();
+
+console.log(
+   await client.agents.get({ id: '<AGENT ID>' })
+);
+```
+
+### Delete agent
+```typescript
+import { createClient } from '@neuphonic/neuphonic-js';
+const client = createClient();
+
+console.log(
+  await client.agents.delete({
+    id: '<AGENT ID>'
   })
 );
 ```
@@ -334,4 +398,46 @@ const wav = toWav(allAudio);
 fs.writeFileSync(__dirname + '/data/ws.wav', wav);
 
 await ws.close(); // closing the socket if we don't want to send anything
+```
+
+#### Client side
+
+The client-side API enables you to build applications with Neuphonic directly in the browser.
+
+## Authentication
+
+Client-side authentication is handled using JWT tokens. To obtain a token, use the server-side client as follows:
+
+```typescript
+import { createClient } from '@neuphonic/neuphonic-js';
+const client = createClient();
+
+console.log(
+  await client.jwt()
+);
+```
+
+## Using agents
+
+The Agent API allows you to build real-time voice communication applications directly in the browser.
+
+```typescript
+import { createBrowserClient } from '@neuphonic/neuphonic-js/browser';
+const client = createBrowserClient();
+
+const agent = client.createAgent({ agent_id: '<AGENT ID>', jwt_token: '<JWT TOKEN>' });
+
+// The Agent will try to access the mic and listen
+const chat = await agent.current.start();
+
+// Transcribed messages and agent replies are available through the onText callback.
+chat.onText((role, text) => {
+  addMessage(text, role);
+});
+
+// Event triggered upon audio playback start or stop
+chat.onAudio(async (audio) => {
+  // Indicates whether audio is currently playing (true) or not (false)
+  console.log(audio);
+});
 ```

@@ -1,23 +1,9 @@
 import { EventSource } from 'eventsource';
-import WebSocket from 'ws';
 import { Base64 } from 'js-base64';
 
 import { Transport } from './transport';
-
-export type TtsConfig = {
-  voice_id?: string;
-  speed?: number;
-  temperature?: number;
-  lang_code?: string;
-  sampling_rate?: number;
-  encoding?: string;
-};
-
-export type TtsMessage = {
-  audio: Uint8Array;
-  text: string;
-  sampling_rate: number;
-};
+import { createWebsocket, createResolvablePromise, Resolvable } from './socket';
+import { TtsConfig, TtsMessage } from './common';
 
 type Data = { audio: string; text: string; sampling_rate: number };
 
@@ -28,20 +14,6 @@ export type SseResult = {
 export type SocketResult = {
   send: (message: string) => AsyncGenerator<TtsMessage>;
   close: () => Promise<void>;
-};
-
-type Resolvable<T> = [Promise<T>, (data: T) => void, (err: unknown) => void];
-
-const createResolvablePromise = <T>(): Resolvable<T> => {
-  let resolvePromise: (data: T) => void;
-  let rejectPromise: (err: unknown) => void;
-
-  const promise = new Promise<T>((resolve, reject) => {
-    resolvePromise = resolve;
-    rejectPromise = reject;
-  });
-
-  return [promise, resolvePromise!, rejectPromise!];
 };
 
 export class Tts {
@@ -126,84 +98,51 @@ export class Tts {
       { ...params, api_key: this.transport.config.apiKey }
     );
 
-    return new Promise((resolveConnect, rejectConnectErr) => {
-      const ws = new WebSocket(finalUrl);
+    let pending = false;
+    let pendingMessage: Resolvable<TtsMessage> | undefined;
 
-      let connectErr = true;
+    const socket = await createWebsocket(finalUrl);
 
-      let pendingClose: Resolvable<void> | undefined;
+    socket.onMessage((message) => {
+      if (!pendingMessage) {
+        return;
+      }
 
-      let pending = false;
-      let pendingMessage: Resolvable<TtsMessage> | undefined;
+      const data = JSON.parse(message.data.toString()).data;
 
-      const result: SocketResult = {
-        async *send(message) {
-          if (pending) {
-            throw new Error('Still receiving the messages');
-          }
-
-          ws.send(message);
-
-          pending = true;
-          pendingMessage = createResolvablePromise();
-
-          while (pending) {
-            yield await pendingMessage[0];
-          }
-        },
-        async close() {
-          if (pendingClose) {
-            return pendingClose[0];
-          }
-
-          ws.close();
-          pendingClose = createResolvablePromise();
-
-          return pendingClose[0];
-        }
-      };
-
-      ws.on('error', (err) => {
-        if (connectErr) {
-          rejectConnectErr(err);
-        }
-        if (pendingClose) {
-          pendingClose[2](err);
-        }
+      pendingMessage[1]({
+        sampling_rate: data.sampling_rate,
+        audio: Base64.toUint8Array(data.audio),
+        text: data.text
       });
 
-      ws.on('open', () => {
-        connectErr = false;
-        resolveConnect(result);
-      });
-
-      ws.on('message', (data) => {
-        if (!pendingMessage) {
-          return;
-        }
-
-        const message = JSON.parse(data.toString()).data;
-
-        pendingMessage[1]({
-          sampling_rate: message.sampling_rate,
-          audio: Base64.toUint8Array(message.audio),
-          text: message.text
-        });
-
-        if (message.stop) {
-          pending = false;
-        } else {
-          pendingMessage = createResolvablePromise();
-        }
-      });
-
-      ws.on('close', function open() {
-        if (!pendingClose) {
-          pendingClose = createResolvablePromise();
-        }
-
-        pendingClose[1]();
-      });
+      if (data.stop) {
+        pending = false;
+      } else {
+        pendingMessage = createResolvablePromise();
+      }
     });
+
+    const result: SocketResult = {
+      async *send(message) {
+        if (pending) {
+          throw new Error('Still receiving the messages');
+        }
+
+        socket.send(message);
+
+        pending = true;
+        pendingMessage = createResolvablePromise();
+
+        while (pending) {
+          yield await pendingMessage[0];
+        }
+      },
+      async close() {
+        return socket.close();
+      }
+    };
+
+    return result;
   }
 }

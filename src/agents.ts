@@ -2,11 +2,16 @@ import z from 'zod';
 
 import { Transport } from './transport';
 
+const nullishString = z
+  .string()
+  .nullish()
+  .transform((val) => val ?? undefined);
+
 export const Agent = z.object({
   name: z.string(),
   agent_id: z.string(),
-  greeting: z.string().optional(),
-  prompt: z.string().optional()
+  greeting: nullishString,
+  prompt: nullishString
 });
 
 const AgentError = z.object({

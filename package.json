@@ -1,6 +1,6 @@
 {
   "name": "@neuphonic/neuphonic-js",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "The official Neuphonic Typescript (Javascript) library ",
   "author": "Neuphonic Team",
   "repository": "https://github.com/neuphonic/neuphonic-js",
@@ -15,6 +15,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/indexBrowser.d.ts",
+      "import": "./dist/indexBrowser.js",
+      "require": "./dist/indexBrowser.js"
     }
   },
   "types": "dist/index.d.ts",
@@ -23,7 +28,8 @@
   "unpkg": "./dist/index.umd.js",
   "license": "MIT",
   "scripts": {
-    "build": "microbundle",
+    "t": "tsx src/t.ts",
+    "build": "microbundle src/index.ts src/indexBrowser.ts",
     "dev": "microbundle watch",
     "lint": "eslint --fix \"src/**/\"",
     "lint:check": "eslint \"src/**/\"",
@@ -55,6 +61,7 @@
     "zod": "^3.24.2",
     "dotenv": "^16.3.1",
     "ws": "^8.18.1",
+    "isomorphic-ws": "5.0.0",
     "eventsource": "^3.0.5",
     "js-base64": "^3.7.7"
   },

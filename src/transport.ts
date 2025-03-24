@@ -1,6 +1,6 @@
 export interface TransportConfig {
   baseURL: string;
-  apiKey: string;
+  apiKey?: string;
 }
 
 type FetchParams = Parameters<typeof fetch>;
@@ -13,9 +13,11 @@ export class Transport {
   constructor(config: TransportConfig) {
     this.config = config;
     this.headers = {
-      'Content-Type': 'application/json',
-      'x-api-key': this.config.apiKey
+      'Content-Type': 'application/json'
     };
+    if (this.config.apiKey) {
+      this.headers['x-api-key'] = this.config.apiKey;
+    }
   }
 
   async fetch(...params: FetchParams): FetchResponse {
@@ -48,7 +50,10 @@ export class Transport {
   }): Promise<any> {
     const response = await this.fetch(this.url('https', url, query), {
       method,
-      headers: this.headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.headers
+      },
       ...(body
         ? {
             body: JSON.stringify(body)
@@ -71,9 +76,7 @@ export class Transport {
   ): Promise<any> {
     const response = await this.fetch(this.url('https', url, query), {
       method,
-      headers: {
-        'x-api-key': this.config.apiKey
-      },
+      headers: this.headers,
       body: formData
     });
 
