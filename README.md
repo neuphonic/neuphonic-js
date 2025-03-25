@@ -425,7 +425,10 @@ The Agent API allows you to build real-time voice communication applications dir
 import { createBrowserClient } from '@neuphonic/neuphonic-js/browser';
 const client = createBrowserClient();
 
-const agent = client.createAgent({ agent_id: '<AGENT ID>', jwt_token: '<JWT TOKEN>' });
+// Pass the token from the server
+client.jwt('<JWT TOKEN>');
+
+const agent = client.createAgent({ agent_id: '<AGENT ID>' });
 
 // The Agent will try to access the mic and listen
 const chat = await agent.current.start();

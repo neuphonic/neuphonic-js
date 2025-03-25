@@ -1,6 +1,7 @@
 export interface TransportConfig {
   baseURL: string;
   apiKey?: string;
+  jwtToken?: string;
 }
 
 type FetchParams = Parameters<typeof fetch>;
@@ -18,6 +19,10 @@ export class Transport {
     if (this.config.apiKey) {
       this.headers['x-api-key'] = this.config.apiKey;
     }
+  }
+
+  jwt(token: string) {
+    this.config.jwtToken = token;
   }
 
   async fetch(...params: FetchParams): FetchResponse {
@@ -50,10 +55,7 @@ export class Transport {
   }): Promise<any> {
     const response = await this.fetch(this.url('https', url, query), {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.headers
-      },
+      headers: this.headers,
       ...(body
         ? {
             body: JSON.stringify(body)
@@ -74,9 +76,15 @@ export class Transport {
     formData: FormData,
     method = 'POST'
   ): Promise<any> {
+    const headers = {
+      ...this.headers
+    };
+
+    delete headers['Content-Type'];
+
     const response = await this.fetch(this.url('https', url, query), {
       method,
-      headers: this.headers,
+      headers,
       body: formData
     });
 
@@ -93,5 +101,16 @@ export class Transport {
     query?: Record<string, string | number | undefined>
   ) {
     return `${protocol}://${this.config.baseURL}/${path}${this.paramsToQs(query)}`;
+  }
+
+  urlJwt(
+    protocol: string,
+    path: string,
+    query?: Record<string, string | number | undefined>
+  ) {
+    return this.url(protocol, path, {
+      jwt_token: this.config.jwtToken,
+      ...query
+    });
   }
 }

@@ -4,20 +4,21 @@ import { Base64 } from 'js-base64';
 import { Transport } from './transport';
 import { createWebsocket, createResolvablePromise, Resolvable } from './socket';
 import { TtsConfig, TtsMessage } from './common';
+import { createBuffer } from './util';
 
 type Data = { audio: string; text: string; sampling_rate: number };
 
-export type SseResult = {
+export type Sse = {
   send: (message: string) => Promise<TtsMessage>;
 };
 
-export type SocketResult = {
+export type Socket = {
   send: (message: string) => AsyncGenerator<TtsMessage>;
   close: () => Promise<void>;
 };
 
 export class Tts {
-  private transport: Transport;
+  protected transport: Transport;
 
   constructor(transport: Transport) {
     this.transport = transport;
@@ -32,7 +33,7 @@ export class Tts {
     const fetchFn = this.transport.fetch;
     const headers = this.transport.headers;
 
-    const result: SseResult = {
+    const result: Sse = {
       async send(message) {
         return new Promise((resolve) => {
           const chunks: Data[] = [];
@@ -91,17 +92,18 @@ export class Tts {
     return result;
   }
 
-  async websocket(params: TtsConfig): Promise<SocketResult> {
-    const finalUrl = this.transport.url(
-      'wss',
-      `speak/${params['lang_code'] || 'en'}`,
-      { ...params, api_key: this.transport.config.apiKey }
-    );
+  protected url(params: Record<string, string | number>) {
+    return this.transport.url('wss', `speak/${params['lang_code'] || 'en'}`, {
+      ...params,
+      api_key: this.transport.config.apiKey
+    });
+  }
 
+  async websocket(params: TtsConfig): Promise<Socket> {
     let pending = false;
     let pendingMessage: Resolvable<TtsMessage> | undefined;
 
-    const socket = await createWebsocket(finalUrl);
+    const socket = await createWebsocket(this.url(params));
 
     socket.onMessage((message) => {
       if (!pendingMessage) {
@@ -111,7 +113,7 @@ export class Tts {
       const data = JSON.parse(message.data.toString()).data;
 
       pendingMessage[1]({
-        sampling_rate: data.sampling_rate,
+        sampling_rate: data.sampaaling_rate,
         audio: Base64.toUint8Array(data.audio),
         text: data.text
       });
@@ -123,7 +125,7 @@ export class Tts {
       }
     });
 
-    const result: SocketResult = {
+    return {
       async *send(message) {
         if (pending) {
           throw new Error('Still receiving the messages');
@@ -142,7 +144,78 @@ export class Tts {
         return socket.close();
       }
     };
+  }
+}
 
-    return result;
+export type Player = {
+  play: (message: string) => void;
+  stop: () => Promise<void>;
+  close: () => Promise<void>;
+};
+
+export class BrowserTts extends Tts {
+  protected url(params: Record<string, string | number>) {
+    return this.transport.urlJwt(
+      'wss',
+      `speak/${params['lang_code'] || 'en'}`,
+      params
+    );
+  }
+
+  async player(params: TtsConfig): Promise<Player> {
+    const socket = await this.websocket(params);
+
+    let duration = 0;
+    let ctx: AudioContext | undefined;
+
+    return {
+      async play(message: string) {
+        return new Promise((resolve, reject) => {
+          (async () => {
+            try {
+              if (!ctx) {
+                ctx = new AudioContext();
+              }
+
+              for await (const chunk of socket.send(
+                `${message.trim()} <STOP>`
+              )) {
+                const track = ctx.createBufferSource();
+                track.buffer = createBuffer(
+                  chunk.audio.buffer,
+                  ctx,
+                  params.sampling_rate || 22050
+                );
+
+                track.connect(ctx.destination);
+
+                track.onended = () => {
+                  if ((ctx?.currentTime ?? duration) >= duration) {
+                    resolve();
+                  }
+                };
+
+                duration = Math.max(ctx.currentTime, duration);
+
+                track.start(duration);
+
+                duration += track.buffer.duration;
+              }
+            } catch (err) {
+              reject(err);
+            }
+          })();
+        });
+      },
+      async stop() {
+        await ctx?.close();
+        ctx = undefined;
+      },
+      async close() {
+        await socket.close();
+        await ctx?.close();
+        ctx = undefined;
+      }
+    };
   }
 }

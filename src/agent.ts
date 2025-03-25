@@ -42,11 +42,10 @@ type AgentWebSocketResponse =
   | AudioResponse
   | StoAudio;
 
-export type AgentConfig = {
+export interface AgentConfig {
   incoming_mode?: string;
-  jwt_token: string;
   agent_id: string;
-};
+}
 
 export type TtsConfig = {
   voice_id?: string;
@@ -112,7 +111,7 @@ export class Agent {
   }
 
   private async websocket() {
-    const url = this.transport.url('ws', 'agents', {
+    const url = this.transport.urlJwt('ws', 'agents', {
       ...this.agentConfig,
       ...this.ttsConfig
     });
@@ -121,6 +120,7 @@ export class Agent {
   }
 
   async requestMedia(): Promise<MediaStreamResult> {
+    const ttsConfig = this.ttsConfig;
     const stream = await navigator.mediaDevices.getUserMedia(this.streamConfig);
 
     let onData: OnData = () => {};
@@ -186,7 +186,11 @@ export class Agent {
       },
       play(bytes, onEnd) {
         const track = ctx().createBufferSource();
-        track.buffer = createBuffer(bytes, ctx(), 22050);
+        track.buffer = createBuffer(
+          bytes,
+          ctx(),
+          ttsConfig.sampling_rate || 22050
+        );
 
         track.onended = () => {
           if (ctx().currentTime >= duration) {

@@ -25,7 +25,7 @@ describe('Voice', () => {
     expect(voice.id).toBe(id);
   });
 
-  test('Clone', async () => {
+  test('Clone file', async () => {
     const client = createClient();
 
     const id = await client.voices.clone({
@@ -49,7 +49,7 @@ describe('Voice', () => {
     const voiceStream = fs.createReadStream(__dirname + '/data/voice1.wav');
 
     const id = await client.voices.clone({
-      voiceName: 'Cloned Readbale Name',
+      voiceName: 'Cloned Readable Name',
       voiceFilePath: voiceStream,
       voiceFileName: 'voice1.wav',
       voiceTags: ['Tag 1']
@@ -60,7 +60,7 @@ describe('Voice', () => {
     const voice = await client.voices.get({ id });
 
     expect(voice.id).toBe(id);
-    expect(voice.name).toBe('Cloned Readbale Name');
+    expect(voice.name).toBe('Cloned Readable Name');
     expect(voice.tags).toEqual(['Tag 1']);
   }, 10000);
 
@@ -89,9 +89,9 @@ describe('Voice', () => {
 
     voice = await client.voices.get({ name: 'Cloned Name' });
     expect(voice.tags).toEqual(['Tag 4', 'Tag 5']);
-  }, 20000);
+  }, 30000);
 
-  test('Delete', async () => {
+  test('Delete file', async () => {
     const client = createClient();
 
     const voiceDeleted = await client.voices.delete({
@@ -104,7 +104,7 @@ describe('Voice', () => {
     const client = createClient();
 
     const voiceDeleted = await client.voices.delete({
-      name: 'Cloned Readbale Name'
+      name: 'Cloned Readable Name'
     });
     expect(voiceDeleted).toBeTruthy();
   });

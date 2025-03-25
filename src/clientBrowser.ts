@@ -1,18 +1,26 @@
 import { Agent, AgentConfig } from './agent';
 import { TtsConfig } from './common';
 import { Transport } from './transport';
+import { BrowserTts } from './tts';
 
 export interface PublicClientConfig {
   baseURL: string;
+  jwtToken?: string;
 }
 
 export class PublicClient {
-  readonly config: PublicClientConfig;
   private transport: Transport;
+  readonly config: PublicClientConfig;
+  readonly tts: BrowserTts;
 
   constructor(config: PublicClientConfig, transport: Transport) {
     this.config = config;
     this.transport = transport;
+    this.tts = new BrowserTts(transport);
+  }
+
+  jwt(token: string) {
+    this.transport.jwt(token);
   }
 
   createAgent(
@@ -20,7 +28,18 @@ export class PublicClient {
     ttsConfig: TtsConfig = {},
     streamConfig: MediaStreamConstraints = {}
   ) {
-    return new Agent(this.transport, config, ttsConfig, streamConfig);
+    const jwtToken  = this.transport.config.jwtToken;
+
+    if (!jwtToken) {
+      throw new Error('JWT token is required');
+    }
+
+    return new Agent(
+      this.transport,
+      config,
+      ttsConfig,
+      streamConfig
+    );
   }
 }
 
