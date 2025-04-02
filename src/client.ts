@@ -2,7 +2,6 @@ import z from 'zod';
 
 import { Transport } from './transport';
 import { Voices } from './voices';
-import { Restorations } from './restorations';
 import { Agents } from './agents';
 import { Tts } from './tts';
 import { apiKey, baseURL } from './env';
@@ -21,7 +20,6 @@ export interface ClientConfig {
 export class Client {
   readonly config: ClientConfig;
   readonly voices: Voices;
-  readonly restorations: Restorations;
   readonly agents: Agents;
   readonly tts: Tts;
   private transport: Transport;
@@ -30,7 +28,6 @@ export class Client {
     this.config = config;
     this.transport = transport;
     this.voices = new Voices(transport);
-    this.restorations = new Restorations(transport);
     this.agents = new Agents(transport);
     this.tts = new Tts(transport);
   }
