@@ -1,5 +1,6 @@
 import { Agent, AgentConfig } from './agent';
 import { TtsConfig } from './common';
+import { baseURL, mergeConfig } from './config';
 import { Transport } from './transport';
 import { BrowserTts } from './tts';
 
@@ -28,28 +29,25 @@ export class PublicClient {
     ttsConfig: TtsConfig = {},
     streamConfig: MediaStreamConstraints = {}
   ) {
-    const jwtToken  = this.transport.config.jwtToken;
+    const jwtToken = this.transport.config.jwtToken;
 
     if (!jwtToken) {
       throw new Error('JWT token is required');
     }
 
-    return new Agent(
-      this.transport,
-      config,
-      ttsConfig,
-      streamConfig
-    );
+    return new Agent(this.transport, config, ttsConfig, streamConfig);
   }
 }
 
 export const createBrowserClient = (
   config: Partial<PublicClientConfig> = {}
 ) => {
-  const mergedConfig = {
-    baseURL: 'eu-west-1.api.neuphonic.com',
-    ...config
-  };
+  const mergedConfig = mergeConfig(
+    {
+      baseURL
+    },
+    config
+  );
 
   const transport = new Transport(mergedConfig);
 
