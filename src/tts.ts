@@ -4,7 +4,7 @@ import { Base64 } from 'js-base64';
 import { Transport } from './transport';
 import { createWebsocket, createResolvablePromise, Resolvable } from './socket';
 import { TtsConfig, TtsMessage } from './common';
-import { createBuffer } from './util';
+import { createBuffer } from './audio';
 
 type Data = { audio: string; text: string; sampling_rate: number };
 
@@ -113,7 +113,7 @@ export class Tts {
       const data = JSON.parse(message.data.toString()).data;
 
       pendingMessage[1]({
-        sampling_rate: data.sampaaling_rate,
+        sampling_rate: data.sampling_rate,
         audio: Base64.toUint8Array(data.audio),
         text: data.text
       });

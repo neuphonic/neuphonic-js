@@ -9,7 +9,7 @@ export type TtsConfig = {
   speed?: number;
   temperature?: number;
   lang_code?: string;
-  sampling_rate?: number;
+  sampling_rate?: 8000 | 16000 | 22050;
   encoding?: string;
 };
 

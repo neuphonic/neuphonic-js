@@ -66,7 +66,7 @@ export const toWav = (audioBytes: Uint8Array, sampleRate = 22050) => {
 export const createBuffer = (
   buffer: ArrayBufferLike,
   context: AudioContext,
-  samplingRate: number = 44100
+  samplingRate: number = 22050
 ) => {
   const array = new Int16Array(buffer);
   const array2 = Array(array.length);

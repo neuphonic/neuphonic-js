@@ -2,7 +2,7 @@ import { Base64 } from 'js-base64';
 
 import { Transport } from './transport';
 import { createWebsocket } from './socket';
-import { createBuffer } from './util';
+import { createBuffer } from './audio';
 
 export type Message = {
   role: 'user' | 'assistant';
