@@ -17,6 +17,14 @@ export type Socket = {
   close: () => Promise<void>;
 };
 
+export type OnMessage = (data: TtsMessage) => void;
+
+export type SocketEvent = {
+  send: (message: string) => void;
+  onMessage: (cb: OnMessage) => void;
+  close: () => Promise<void>;
+};
+
 export class Tts {
   protected transport: Transport;
 
@@ -97,6 +105,34 @@ export class Tts {
       ...params,
       api_key: this.transport.config.apiKey
     });
+  }
+
+  async websocketCb(params: TtsConfig): Promise<SocketEvent> {
+    let onMessage: OnMessage = () => {};
+
+    const socket = await createWebsocket(this.url(params));
+
+    socket.onMessage((message) => {
+      const data = JSON.parse(message.data.toString()).data;
+
+      onMessage({
+        sampling_rate: data.sampling_rate,
+        audio: Base64.toUint8Array(data.audio),
+        text: data.text
+      });
+    });
+
+    return {
+      send(message) {
+        socket.send(message);
+      },
+      async onMessage(cb) {
+        onMessage = cb;
+      },
+      async close() {
+        return socket.close();
+      }
+    };
   }
 
   async websocket(params: TtsConfig): Promise<Socket> {

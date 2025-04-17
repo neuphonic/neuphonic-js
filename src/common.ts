@@ -1,8 +1,8 @@
 export type TtsMessage = {
-    audio: Uint8Array;
-    text: string;
-    sampling_rate: number;
-  };
+  audio: Uint8Array;
+  text: string;
+  sampling_rate: number;
+};
 
 export type TtsConfig = {
   voice_id?: string;
