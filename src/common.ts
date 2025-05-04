@@ -2,6 +2,7 @@ export type TtsMessage = {
   audio: Uint8Array;
   text: string;
   sampling_rate: number;
+  stop: boolean
 };
 
 export type TtsConfig = {
@@ -21,3 +22,15 @@ export class WsErr extends Error {
     this.name = 'WsError';
   }
 }
+
+export const createErr = (
+  name: WsErr['name'],
+  message: string,
+  cause?: unknown
+) => {
+  const err = new WsErr(message);
+  err.name = name;
+  err.cause = cause;
+
+  return err;
+};

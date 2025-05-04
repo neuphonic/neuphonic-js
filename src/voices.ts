@@ -6,7 +6,7 @@ import { voiceFile, Reading } from './files';
 export const Voice = z.object({
   id: z.string(),
   name: z.string(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).nullish().transform((val) => val ?? undefined),
   model_availability: z.array(z.string()).optional(),
   created_at: z.string(),
   updated_at: z.string(),

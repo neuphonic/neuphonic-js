@@ -22,6 +22,7 @@ export type OnMessage = (data: TtsMessage) => void;
 export type SocketEvent = {
   send: (message: string) => void;
   onMessage: (cb: OnMessage) => void;
+  waitForMessages: () => Promise<boolean>;
   close: () => Promise<void>;
 };
 
@@ -85,7 +86,12 @@ export class Tts {
               offset += bytes.byteLength;
             });
 
-            resolve({ sampling_rate: samplingRate, audio: merged, text });
+            resolve({
+              sampling_rate: samplingRate,
+              audio: merged,
+              text,
+              stop: true
+            });
           });
 
           es.addEventListener('message', (event) => {
@@ -108,6 +114,10 @@ export class Tts {
   }
 
   async websocketCb(params: TtsConfig): Promise<SocketEvent> {
+    let messageCount = 0;
+    let messagesComplete = createResolvablePromise<boolean>();
+    let messagesRejectTimout: NodeJS.Timeout | undefined;
+
     let onMessage: OnMessage = () => {};
 
     const socket = await createWebsocket(this.url(params));
@@ -118,16 +128,38 @@ export class Tts {
       onMessage({
         sampling_rate: data.sampling_rate,
         audio: Base64.toUint8Array(data.audio),
-        text: data.text
+        text: data.text,
+        stop: data.stop
       });
+
+      if (data.stop) {
+        messageCount--;
+      }
+
+      if (messageCount == 0) {
+        clearTimeout(messagesRejectTimout);
+        messagesComplete[1](true);
+        messagesComplete = createResolvablePromise();
+      }
     });
 
     return {
       send(message) {
+        messageCount++;
+        clearTimeout(messagesRejectTimout);
+
+        const delay = Math.min(message.length * 10 + 3000, 15 * 60 * 1000);
+        messagesRejectTimout = setTimeout(() => {
+          messagesComplete[1](false);
+        }, delay);
+
         socket.send(message);
       },
       async onMessage(cb) {
         onMessage = cb;
+      },
+      waitForMessages() {
+        return messagesComplete[0];
       },
       async close() {
         return socket.close();
@@ -151,7 +183,8 @@ export class Tts {
       pendingMessage[1]({
         sampling_rate: data.sampling_rate,
         audio: Base64.toUint8Array(data.audio),
-        text: data.text
+        text: data.text,
+        stop: data.stop
       });
 
       if (data.stop) {

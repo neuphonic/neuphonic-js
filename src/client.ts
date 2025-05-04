@@ -4,7 +4,7 @@ import { Transport } from './transport';
 import { Voices } from './voices';
 import { Agents } from './agents';
 import { Tts } from './tts';
-import { apiKey, baseURL } from './env';
+import { apiKey, baseURL, baseHttp } from './env';
 import { mergeConfig } from './config';
 
 const GetJwtToken = z.object({
@@ -16,6 +16,7 @@ const GetJwtToken = z.object({
 export interface ClientConfig {
   baseURL: string;
   apiKey: string;
+  baseHttp?: boolean;
 }
 
 export class Client {
@@ -53,7 +54,8 @@ export const createClient = (config: Partial<ClientConfig> = {}) => {
   const mergedConfig = mergeConfig(
     {
       baseURL,
-      apiKey
+      apiKey,
+      baseHttp
     },
     config
   );

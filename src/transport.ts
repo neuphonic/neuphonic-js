@@ -1,5 +1,6 @@
 export interface TransportConfig {
   baseURL: string;
+  baseHttp?: boolean;
   apiKey?: string;
   jwtToken?: string;
 }
@@ -100,6 +101,14 @@ export class Transport {
     path: string,
     query?: Record<string, string | number | undefined>
   ) {
+    if (this.config.baseHttp) {
+      if (protocol === 'https') {
+        protocol = 'http';
+      } else if (protocol == 'wss') {
+        protocol = 'ws';
+      }
+    }
+
     return `${protocol}://${this.config.baseURL}/${path}${this.paramsToQs(query)}`;
   }
 
