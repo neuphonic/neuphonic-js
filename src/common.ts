@@ -15,7 +15,7 @@ export type TtsConfig = {
 };
 
 export class WsErr extends Error {
-  name: 'WsConnect' | 'WsClose' | 'WsError';
+  name: 'WsConnect' | 'WsClose' | 'WsError' | 'TtsError';
   cause?: unknown;
   constructor(message: string) {
     super(message);

@@ -3,7 +3,7 @@ import { Base64 } from 'js-base64';
 
 import { Transport } from './transport';
 import { createWebsocket, createResolvablePromise, Resolvable } from './socket';
-import { TtsConfig, TtsMessage } from './common';
+import { createErr, TtsConfig, TtsMessage } from './common';
 import { createBuffer } from './audio';
 
 type Data = { audio: string; text: string; sampling_rate: number };
@@ -24,6 +24,10 @@ export type SocketEvent = {
   onMessage: (cb: OnMessage) => void;
   waitForMessages: () => Promise<boolean>;
   close: () => Promise<void>;
+};
+
+const errClosed = () => {
+  return createErr('TtsError', 'Socket already closed');
 };
 
 export class Tts {
@@ -114,6 +118,7 @@ export class Tts {
   }
 
   async websocketCb(params: TtsConfig): Promise<SocketEvent> {
+    let wasClosed = false;
     let messageCount = 0;
     let messagesComplete = createResolvablePromise<boolean>();
     let messagesRejectTimout: NodeJS.Timeout | undefined;
@@ -145,6 +150,10 @@ export class Tts {
 
     return {
       send(message) {
+        if (wasClosed) {
+          throw errClosed();
+        }
+
         messageCount++;
         clearTimeout(messagesRejectTimout);
 
@@ -162,12 +171,14 @@ export class Tts {
         return messagesComplete[0];
       },
       async close() {
+        wasClosed = true;
         return socket.close();
       }
     };
   }
 
   async websocket(params: TtsConfig): Promise<Socket> {
+    let wasClosed = false;
     let pending = false;
     let pendingMessage: Resolvable<TtsMessage> | undefined;
 
@@ -196,8 +207,11 @@ export class Tts {
 
     return {
       async *send(message) {
+        if (wasClosed) {
+          throw errClosed();
+        }
         if (pending) {
-          throw new Error('Still receiving the messages');
+          throw createErr('TtsError', 'Still receiving the messages');
         }
 
         socket.send(message);
@@ -210,6 +224,8 @@ export class Tts {
         }
       },
       async close() {
+        pending = false;
+        wasClosed = true;
         return socket.close();
       }
     };

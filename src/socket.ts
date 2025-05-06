@@ -65,8 +65,8 @@ export const createWebsocket = async (url: string): Promise<SocketResult> => {
           return pendingClose[0];
         }
 
-        ws.close();
         pendingClose = createResolvablePromise();
+        ws.close();
 
         return pendingClose[0];
       }
