@@ -1,4 +1,5 @@
-import { Agent, AgentConfig } from './agent';
+import { AgentConfig } from './agent-base';
+import { Agent } from './agent';
 import { TtsConfig } from './common';
 import { baseURL, mergeConfig } from './config';
 import { Transport } from './transport';

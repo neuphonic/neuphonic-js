@@ -3,58 +3,8 @@ import { Base64 } from 'js-base64';
 import { Transport } from './transport';
 import { createWebsocket } from './socket';
 import { createBuffer } from './audio';
-
-export type Message = {
-  role: 'user' | 'assistant';
-  text: string;
-};
-
-type UserTranscriptResponse = {
-  data: {
-    type: 'user_transcript';
-    text: string;
-  };
-};
-
-type LlmResponse = {
-  data: {
-    type: 'llm_response';
-    text: string;
-  };
-};
-
-type AudioResponse = {
-  data: {
-    type: 'audio_response';
-    audio: string;
-  };
-};
-
-type StoAudio = {
-  data: {
-    type: 'stop_audio_response';
-  };
-};
-
-type AgentWebSocketResponse =
-  | UserTranscriptResponse
-  | LlmResponse
-  | AudioResponse
-  | StoAudio;
-
-export interface AgentConfig {
-  incoming_mode?: string;
-  agent_id: string;
-}
-
-export type TtsConfig = {
-  voice_id?: string;
-  speed?: number;
-  temperature?: number;
-  lang_code?: string;
-  sampling_rate?: number;
-  encoding?: string;
-};
+import { TtsConfig } from './common';
+import { AgentWebSocketResponse, AgentConfig } from './agent-base';
 
 type OnData = (data: Blob) => void;
 type onText = (role: 'user' | 'assistant', text: string) => void;
@@ -71,7 +21,7 @@ type MediaStreamResult = {
   resume: () => Promise<void>;
 };
 
-type AgentResult = {
+export type AgentResult = {
   onText: (cb: onText) => void;
   onAudio: (cb: OnAudio) => void;
   stop: () => Promise<void>;
