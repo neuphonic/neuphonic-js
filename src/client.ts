@@ -51,11 +51,7 @@ export class Client {
     throw new Error('Unknown get jwt token error');
   }
 
-  async createBaseAgent(config: AgentConfig, ttsConfig: TtsConfig = {}) {
-    const token = await this.jwt();
-
-    this.transport.jwt(token);
-
+  createBaseAgent(config: AgentConfig, ttsConfig: TtsConfig = {}) {
     return new AgentBase(this.transport, config, ttsConfig);
   }
 }

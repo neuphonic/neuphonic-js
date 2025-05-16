@@ -8,6 +8,7 @@ import { BrowserTts } from './tts';
 export interface PublicClientConfig {
   baseURL: string;
   jwtToken?: string;
+  apiKey?: string;
 }
 
 export class PublicClient {
@@ -30,10 +31,8 @@ export class PublicClient {
     ttsConfig: TtsConfig = {},
     streamConfig: MediaStreamConstraints = {}
   ) {
-    const jwtToken = this.transport.config.jwtToken;
-
-    if (!jwtToken) {
-      throw new Error('JWT token is required');
+    if (!this.transport.config.jwtToken && !this.transport.config.apiKey) {
+      throw new Error('JWT token or API key is required');
     }
 
     return new Agent(this.transport, config, ttsConfig, streamConfig);

@@ -61,7 +61,7 @@ export class Agent {
   }
 
   private async websocket() {
-    const url = this.transport.urlJwt('ws', 'agents', {
+    const url = this.transport.urlJwt('wss', 'agents', {
       ...this.agentConfig,
       ...this.ttsConfig
     });
@@ -217,15 +217,15 @@ export class Agent {
         }
 
         if (received.data && 'audio' in received.data) {
-          if (!playing) {
-            playing = true;
-            onAudio(playing);
-          }
-
           const byteArray = Base64.toUint8Array(received.data.audio).buffer;
 
           if (byteArray.byteLength === 0) {
             return;
+          }
+
+          if (!playing) {
+            playing = true;
+            onAudio(playing);
           }
 
           media.play(byteArray, () => {

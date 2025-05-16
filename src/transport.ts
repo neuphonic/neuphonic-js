@@ -118,7 +118,9 @@ export class Transport {
     query?: Record<string, string | number | undefined>
   ) {
     return this.url(protocol, path, {
-      jwt_token: this.config.jwtToken,
+      ...(this.config.jwtToken
+        ? { jwt_token: this.config.jwtToken }
+        : { api_key: this.config.apiKey }),
       ...query
     });
   }

@@ -72,7 +72,7 @@ export class AgentBase {
   }
 
   private async websocket() {
-    const url = this.transport.urlJwt('ws', 'agents', {
+    const url = this.transport.urlJwt('wss', 'agents', {
       ...this.agentConfig,
       ...this.ttsConfig
     });
