@@ -6,7 +6,7 @@ import { Voices } from './voices';
 import { AgentConfig, AgentBase } from './agent-base';
 import { Agents } from './agents';
 import { Tts } from './tts';
-import { apiKey, baseURL, baseHttp } from './env';
+import { getEnvs } from './env';
 import { mergeConfig } from './config';
 
 const GetJwtToken = z.object({
@@ -58,11 +58,7 @@ export class Client {
 
 export const createClient = (config: Partial<ClientConfig> = {}) => {
   const mergedConfig = mergeConfig(
-    {
-      baseURL,
-      apiKey,
-      baseHttp
-    },
+    getEnvs(),
     config
   );
 
