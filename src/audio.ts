@@ -68,15 +68,15 @@ export const createBuffer = (
   context: AudioContext,
   samplingRate: number = 22050
 ) => {
-  const array = new Int16Array(buffer);
-  const array2 = Array(array.length);
+  const orig = new Int16Array(buffer);
+  const converted = new Float32Array(orig.length);
   
-  for (let i = 0, length = array.length; i < length; i++) {
-    array2[i] = (array[i] || 1) / 32768;
+  for (let i = 0, length = orig.length; i < length; i++) {
+    converted[i] = (orig[i] || 0) / 32768;
   }
 
-  const buffer1 = context.createBuffer(1, buffer.byteLength / 2, samplingRate);
-  buffer1.getChannelData(0).set(array2);
+  const out = context.createBuffer(1, buffer.byteLength / 2, samplingRate);
+  out.copyToChannel(converted, 0);
   
-  return buffer1;
+  return out;
 };

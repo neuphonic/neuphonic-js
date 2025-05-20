@@ -12,6 +12,7 @@ export type TtsConfig = {
   lang_code?: string;
   sampling_rate?: 8000 | 16000 | 22050;
   encoding?: string;
+  output_format?: 'wav' | 'mp3';
 };
 
 export class WsErr extends Error {

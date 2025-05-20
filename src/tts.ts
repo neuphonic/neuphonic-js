@@ -266,11 +266,18 @@ export class BrowserTts extends Tts {
                 `${message.trim()} <STOP>`
               )) {
                 const track = ctx.createBufferSource();
-                track.buffer = createBuffer(
-                  chunk.audio.buffer,
-                  ctx,
-                  params.sampling_rate || 22050
-                );
+
+                if (params.output_format === 'mp3') {
+                  track.buffer = await ctx.decodeAudioData(
+                    chunk.audio.buffer as ArrayBuffer
+                  );
+                } else {
+                  track.buffer = createBuffer(
+                    chunk.audio.buffer,
+                    ctx,
+                    params.sampling_rate || 22050
+                  );
+                }
 
                 track.connect(ctx.destination);
 

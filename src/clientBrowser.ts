@@ -9,6 +9,7 @@ export interface PublicClientConfig {
   baseURL: string;
   jwtToken?: string;
   apiKey?: string;
+  baseHttp?: boolean;
 }
 
 export class PublicClient {
