@@ -2,9 +2,9 @@ import { EventSource } from 'eventsource';
 import { Base64 } from 'js-base64';
 
 import { Transport } from './transport';
-import { createWebsocket, createResolvablePromise, Resolvable } from './socket';
+import { createWebsocket, createResolvablePromise } from './socket';
 import { createErr, TtsConfig, TtsMessage } from './common';
-import { createBuffer } from './audio';
+import { createTrack } from './audio';
 
 type Data = { audio: string; text: string; sampling_rate: number };
 
@@ -14,6 +14,7 @@ export type Sse = {
 
 export type Socket = {
   send: (message: string) => AsyncGenerator<TtsMessage>;
+  stop: () => void;
   close: () => Promise<void>;
 };
 
@@ -121,7 +122,7 @@ export class Tts {
     let wasClosed = false;
     let messageCount = 0;
     let messagesComplete = createResolvablePromise<boolean>();
-    let messagesRejectTimout: NodeJS.Timeout | undefined;
+    let messagesRejectTimeout: NodeJS.Timeout | undefined;
 
     let onMessage: OnMessage = () => {};
 
@@ -142,10 +143,16 @@ export class Tts {
       }
 
       if (messageCount == 0) {
-        clearTimeout(messagesRejectTimout);
+        clearTimeout(messagesRejectTimeout);
         messagesComplete[1](true);
         messagesComplete = createResolvablePromise();
       }
+    });
+
+    socket.onClose(() => {
+      wasClosed = true;
+      clearTimeout(messagesRejectTimeout);
+      messagesComplete[1](messageCount == 0);
     });
 
     return {
@@ -155,10 +162,10 @@ export class Tts {
         }
 
         messageCount++;
-        clearTimeout(messagesRejectTimout);
+        clearTimeout(messagesRejectTimeout);
 
         const delay = Math.min(message.length * 10 + 3000, 15 * 60 * 1000);
-        messagesRejectTimout = setTimeout(() => {
+        messagesRejectTimeout = setTimeout(() => {
           messagesComplete[1](false);
         }, delay);
 
@@ -179,30 +186,28 @@ export class Tts {
 
   async websocket(params: TtsConfig): Promise<Socket> {
     let wasClosed = false;
-    let pending = false;
-    let pendingMessage: Resolvable<TtsMessage> | undefined;
+    let pendings: TtsMessage[] | undefined;
 
     const socket = await createWebsocket(this.url(params));
 
     socket.onMessage((message) => {
-      if (!pendingMessage) {
+      if (!pendings) {
         return;
       }
 
       const data = JSON.parse(message.data.toString()).data;
 
-      pendingMessage[1]({
+      pendings.push({
         sampling_rate: data.sampling_rate,
         audio: Base64.toUint8Array(data.audio),
         text: data.text,
         stop: data.stop
       });
+    });
 
-      if (data.stop) {
-        pending = false;
-      } else {
-        pendingMessage = createResolvablePromise();
-      }
+    socket.onClose(() => {
+      wasClosed = true;
+      pendings = undefined;
     });
 
     return {
@@ -210,21 +215,37 @@ export class Tts {
         if (wasClosed) {
           throw errClosed();
         }
-        if (pending) {
+        if (pendings) {
           throw createErr('TtsError', 'Still receiving the messages');
         }
 
         socket.send(message);
 
-        pending = true;
-        pendingMessage = createResolvablePromise();
+        pendings = [];
 
-        while (pending) {
-          yield await pendingMessage[0];
+        try {
+          while (true) {
+            const message = pendings.shift();
+
+            if (message) {
+              yield message;
+
+              if (message.stop) {
+                break;
+              }
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 5));
+          }
+        } finally {
+          pendings = undefined;
         }
       },
+      stop() {
+        pendings = undefined;
+      },
       async close() {
-        pending = false;
+        pendings = undefined;
         wasClosed = true;
         return socket.close();
       }
@@ -234,7 +255,7 @@ export class Tts {
 
 export type Player = {
   play: (message: string) => void;
-  stop: () => Promise<void>;
+  stop: () => void;
   close: () => Promise<void>;
 };
 
@@ -249,64 +270,74 @@ export class BrowserTts extends Tts {
 
   async player(params: TtsConfig): Promise<Player> {
     const socket = await this.websocket(params);
+    let audioCtx: AudioContext | undefined;
+
+    const ctx = () => {
+      if (!audioCtx) {
+        duration = 0;
+        audioCtx = new AudioContext({
+          sampleRate: params.sampling_rate || 22050
+        });
+      }
+
+      return audioCtx;
+    };
 
     let duration = 0;
-    let ctx: AudioContext | undefined;
+    let stoped = false;
+    let tracks: AudioBufferSourceNode[] = [];
 
     return {
       async play(message: string) {
-        return new Promise((resolve, reject) => {
-          (async () => {
-            try {
-              if (!ctx) {
-                ctx = new AudioContext();
+        tracks = [];
+        stoped = false;
+
+        for await (const chunk of socket.send(`${message.trim()} <STOP>`)) {
+          if (stoped) {
+            break;
+          }
+
+          const track = await createTrack(
+            chunk.audio.buffer,
+            ctx(),
+            params.output_format,
+            params.sampling_rate
+          );
+          tracks.push(track);
+
+          track.connect(ctx().destination);
+
+          duration = Math.max(ctx().currentTime, duration);
+
+          track.start(duration);
+
+          duration += track.buffer.duration;
+        }
+
+        const lastTrack = tracks[tracks.length - 1];
+
+        if (lastTrack) {
+          await new Promise<void>((resolve) => {
+            lastTrack.onended = () => {
+              const delay = (ctx().currentTime - duration) * 1000;
+
+              if (delay < 1) {
+                resolve();
+              } else {
+                setTimeout(() => resolve(), delay);
               }
-
-              for await (const chunk of socket.send(
-                `${message.trim()} <STOP>`
-              )) {
-                const track = ctx.createBufferSource();
-
-                if (params.output_format === 'mp3') {
-                  track.buffer = await ctx.decodeAudioData(
-                    chunk.audio.buffer as ArrayBuffer
-                  );
-                } else {
-                  track.buffer = createBuffer(
-                    chunk.audio.buffer,
-                    ctx,
-                    params.sampling_rate || 22050
-                  );
-                }
-
-                track.connect(ctx.destination);
-
-                track.onended = () => {
-                  if ((ctx?.currentTime ?? duration) >= duration) {
-                    resolve();
-                  }
-                };
-
-                duration = Math.max(ctx.currentTime, duration);
-
-                track.start(duration);
-
-                duration += track.buffer.duration;
-              }
-            } catch (err) {
-              reject(err);
-            }
-          })();
-        });
+            };
+          });
+        }
       },
-      async stop() {
-        await ctx?.close();
-        ctx = undefined;
+      stop() {
+        stoped = true;
+        tracks.forEach((track) => track.stop());
+        duration = ctx().currentTime;
       },
       async close() {
         await socket.close();
-        await ctx?.close();
-        ctx = undefined;
+        await ctx().close();
       }
     };
   }

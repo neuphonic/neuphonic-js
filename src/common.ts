@@ -2,7 +2,7 @@ export type TtsMessage = {
   audio: Uint8Array;
   text: string;
   sampling_rate: number;
-  stop: boolean
+  stop: boolean;
 };
 
 export type TtsConfig = {

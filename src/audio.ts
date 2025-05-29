@@ -63,20 +63,37 @@ export const toWav = (audioBytes: Uint8Array, sampleRate = 22050) => {
   return wavBuffer;
 };
 
-export const createBuffer = (
+const createBuffer = (
   buffer: ArrayBufferLike,
   context: AudioContext,
   samplingRate: number = 22050
 ) => {
   const orig = new Int16Array(buffer);
   const converted = new Float32Array(orig.length);
-  
+
   for (let i = 0, length = orig.length; i < length; i++) {
     converted[i] = (orig[i] || 0) / 32768;
   }
 
-  const out = context.createBuffer(1, buffer.byteLength / 2, samplingRate);
+  const out = context.createBuffer(1, converted.length, samplingRate);
   out.copyToChannel(converted, 0);
-  
+
   return out;
+};
+
+export const createTrack = async (
+  buffer: ArrayBufferLike,
+  context: AudioContext,
+  format: 'wav' | 'mp3' = 'wav',
+  samplingRate: number = 22050
+) => {
+  const track = context.createBufferSource();
+
+  if (format === 'mp3') {
+    track.buffer = await context.decodeAudioData(buffer as ArrayBuffer);
+  } else {
+    track.buffer = createBuffer(buffer, context, samplingRate);
+  }
+
+  return track as AudioBufferSourceNode & { buffer: AudioBuffer };
 };

@@ -2,7 +2,7 @@ import { Base64 } from 'js-base64';
 
 import { Transport } from './transport';
 import { createWebsocket } from './socket';
-import { createBuffer } from './audio';
+import { createTrack } from './audio';
 import { TtsConfig } from './common';
 import { AgentWebSocketResponse, AgentConfig } from './agent-base';
 
@@ -17,8 +17,6 @@ type MediaStreamResult = {
   start: () => void;
   stop: () => Promise<void>;
   interrupt: () => void;
-  pause: () => Promise<void>;
-  resume: () => Promise<void>;
 };
 
 export type AgentResult = {
@@ -111,50 +109,35 @@ export class Agent {
         stream.getTracks().forEach((track) => track.stop());
 
         await audioCtx?.close();
-
         audioCtx = undefined;
-      },
-      async pause() {
-        if (mediaRecorder.state === 'recording') {
-          mediaRecorder.pause();
-        }
-        if (audioCtx?.state === 'running') {
-          await audioCtx.suspend();
-        }
-      },
-      async resume() {
-        if (mediaRecorder.state === 'paused') {
-          mediaRecorder.resume();
-        }
-        if (audioCtx?.state === 'suspended') {
-          await audioCtx.resume();
-        }
       },
       interrupt() {
         audioCtx?.close();
         audioCtx = undefined;
       },
       play(bytes, onEnd) {
-        const track = ctx().createBufferSource();
-        track.buffer = createBuffer(
-          bytes,
-          ctx(),
-          ttsConfig.sampling_rate || 22050
-        );
+        (async () => {
+          const track = await createTrack(
+            bytes,
+            ctx(),
+            ttsConfig.output_format,
+            ttsConfig.sampling_rate
+          );
 
-        track.onended = () => {
-          if (ctx().currentTime >= duration) {
-            onEnd();
-          }
-        };
+          track.onended = () => {
+            if (ctx().currentTime >= duration) {
+              onEnd();
+            }
+          };
 
-        track.connect(ctx().destination);
+          track.connect(ctx().destination);
 
-        duration = Math.max(ctx().currentTime, duration);
+          duration = Math.max(ctx().currentTime, duration);
 
-        track.start(duration);
+          track.start(duration);
 
-        duration += track.buffer.duration;
+          duration += track.buffer.duration;
+        })();
       }
     };
   }
@@ -181,6 +164,8 @@ export class Agent {
     let onText: onText = () => {};
     let onAudio: OnAudio = () => {};
 
+    let playing = false;
+
     this.currentAgent = {
       onText(cb: onText) {
         onText = cb;
@@ -189,6 +174,9 @@ export class Agent {
         onAudio = cb;
       },
       async stop() {
+        if (playing) {
+          onAudio(false);
+        }
         await media.stop();
         await socket.close();
       }
@@ -200,50 +188,46 @@ export class Agent {
       socket.send(data);
     });
 
-    let playing = false;
-
     socket.onMessage((message) => {
       const received = JSON.parse(
         message.data.toString()
       ) as AgentWebSocketResponse;
 
-      if (received) {
-        if (received.data && 'text' in received.data) {
-          const text = received.data.text;
-          const role =
-            received.data.type === 'user_transcript' ? 'user' : 'assistant';
+      if (received.data && 'text' in received.data) {
+        const text = received.data.text;
+        const role =
+          received.data.type === 'user_transcript' ? 'user' : 'assistant';
 
-          onText(role, text);
+        onText(role, text);
+      }
+
+      if (received.data && 'audio' in received.data) {
+        const byteArray = Base64.toUint8Array(received.data.audio).buffer;
+
+        if (byteArray.byteLength === 0) {
+          return;
         }
 
-        if (received.data && 'audio' in received.data) {
-          const byteArray = Base64.toUint8Array(received.data.audio).buffer;
-
-          if (byteArray.byteLength === 0) {
-            return;
-          }
-
-          if (!playing) {
-            playing = true;
-            onAudio(playing);
-          }
-
-          media.play(byteArray, () => {
-            if (playing) {
-              playing = false;
-              onAudio(playing);
-            }
-          });
+        if (!playing) {
+          playing = true;
+          onAudio(playing);
         }
 
-        if (received.data.type === 'stop_audio_response') {
+        media.play(byteArray, () => {
           if (playing) {
             playing = false;
             onAudio(playing);
           }
+        });
+      }
 
-          media.interrupt();
+      if (received.data.type === 'stop_audio_response') {
+        if (playing) {
+          playing = false;
+          onAudio(playing);
         }
+
+        media.interrupt();
       }
     });
 

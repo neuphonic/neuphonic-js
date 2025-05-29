@@ -3,12 +3,14 @@ import { WsErr } from './common';
 
 type OnMessage = (message: WebSocket.MessageEvent) => void;
 type OnErr = (err: unknown) => void;
+type OnClose = () => void;
 
 export type SocketResult = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   send: (message: any) => void;
   onMessage: (cb: OnMessage) => void;
   onErr: (cb: OnErr) => void;
+  onClose: (cb: OnClose) => void;
   close: () => Promise<void>;
 };
 
@@ -47,6 +49,7 @@ export const createWebsocket = async (url: string): Promise<SocketResult> => {
 
     let onErr: OnErr = () => {};
     let onMessage: OnMessage = () => {};
+    let onClose: OnClose = () => {};
 
     const result: SocketResult = {
       async send(message) {
@@ -59,6 +62,9 @@ export const createWebsocket = async (url: string): Promise<SocketResult> => {
       },
       onErr(cb) {
         onErr = cb;
+      },
+      onClose(cb) {
+        onClose = cb;
       },
       async close() {
         if (pendingClose) {
@@ -95,6 +101,7 @@ export const createWebsocket = async (url: string): Promise<SocketResult> => {
 
     ws.addEventListener('close', function open() {
       if (!pendingClose) {
+        onClose();
         pendingClose = createResolvablePromise();
       }
 
