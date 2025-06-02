@@ -78,8 +78,7 @@ const msg = `Hello how are you?<STOP>`;
 
 const sse = await client.tts.sse({
   speed: 1.15,
-  lang_code: 'en',
-  voice_id: 'e564ba7e-aa8d-46a2-96a8-8dffedade48f'
+  lang_code: 'en'
 });
 
 const res = await sse.send(msg);
@@ -99,8 +98,7 @@ const msg = `Hello how are you?<STOP>`;
 
 const ws = await client.tts.websocket({
   speed: 1.15,
-  lang_code: 'en',
-  voice_id: 'e564ba7e-aa8d-46a2-96a8-8dffedade48f'
+  lang_code: 'en' 
 });
 
 let byteLen = 0;
