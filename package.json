@@ -1,6 +1,6 @@
 {
   "name": "@neuphonic/neuphonic-js",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "The official Neuphonic Typescript (Javascript) library ",
   "author": "Neuphonic Team",
   "repository": "https://github.com/neuphonic/neuphonic-js",
@@ -32,7 +32,7 @@
     "dev": "microbundle watch",
     "lint": "eslint --fix \"src/**/\"",
     "lint:check": "eslint \"src/**/\"",
-    "test": "jest --bail --setupFiles dotenv/config",
+    "test": "jest --verbose --runInBand --bail --setupFiles dotenv/config",
     "test:watch": "jest --watch",
     "test:ci": "jest --bail --runInBand --ci --setupFiles dotenv/config",
     "prettier": "prettier --write .",

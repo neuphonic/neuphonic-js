@@ -2,7 +2,7 @@ import { EventSource } from 'eventsource';
 import { Base64 } from 'js-base64';
 
 import { Transport } from './transport';
-import { createWebsocket, createResolvablePromise } from './socket';
+import { createWebsocket, createResolvablePromise, Resolvable } from './socket';
 import { createErr, TtsConfig, TtsMessage } from './common';
 import { createTrack } from './audio';
 
@@ -14,7 +14,6 @@ export type Sse = {
 
 export type Socket = {
   send: (message: string) => AsyncGenerator<TtsMessage>;
-  stop: () => void;
   close: () => Promise<void>;
 };
 
@@ -185,29 +184,64 @@ export class Tts {
   }
 
   async websocket(params: TtsConfig): Promise<Socket> {
-    let wasClosed = false;
-    let pendings: TtsMessage[] | undefined;
-
     const socket = await createWebsocket(this.url(params));
+
+    let wasClosed = false;
+    let pendings: Resolvable<TtsMessage | undefined>[] | undefined;
+
+    const getMessage = async () => {
+      if (!pendings) {
+        return undefined;
+      }
+
+      const pending = pendings[0];
+
+      if (!pending) {
+        return undefined;
+      }
+
+      const message = await pending[0];
+
+      pendings.shift();
+
+      return message;
+    };
+
+    const close = () => {
+      wasClosed = true;
+      pendings?.forEach((pending) => {
+        pending[1](undefined);
+      });
+      pendings = undefined;
+    };
 
     socket.onMessage((message) => {
       if (!pendings) {
         return;
       }
 
+      const pending = pendings[pendings.length - 1];
+
+      if (!pending) {
+        return;
+      }
+
       const data = JSON.parse(message.data.toString()).data;
 
-      pendings.push({
+      pending[1]({
         sampling_rate: data.sampling_rate,
         audio: Base64.toUint8Array(data.audio),
         text: data.text,
         stop: data.stop
       });
+
+      if (!data.stop) {
+        pendings.push(createResolvablePromise());
+      }
     });
 
     socket.onClose(() => {
-      wasClosed = true;
-      pendings = undefined;
+      close();
     });
 
     return {
@@ -219,13 +253,13 @@ export class Tts {
           throw createErr('TtsError', 'Still receiving the messages');
         }
 
+        pendings = [createResolvablePromise()];
+
         socket.send(message);
 
-        pendings = [];
-
         try {
-          while (true) {
-            const message = pendings.shift();
+          while (!wasClosed) {
+            const message = await getMessage();
 
             if (message) {
               yield message;
@@ -234,19 +268,13 @@ export class Tts {
                 break;
               }
             }
-
-            await new Promise((resolve) => setTimeout(resolve, 5));
           }
         } finally {
           pendings = undefined;
         }
       },
-      stop() {
-        pendings = undefined;
-      },
       async close() {
-        pendings = undefined;
-        wasClosed = true;
+        close();
         return socket.close();
       }
     };
