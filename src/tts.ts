@@ -18,11 +18,13 @@ export type Socket = {
 };
 
 export type OnMessage = (data: TtsMessage) => void;
+export type OnClose = () => void;
 
 export type SocketEvent = {
   send: (message: string) => void;
   onMessage: (cb: OnMessage) => void;
   waitForMessages: () => Promise<boolean>;
+  onClose: (cb: OnClose) => void;
   close: () => Promise<void>;
 };
 
@@ -118,14 +120,15 @@ export class Tts {
   }
 
   async websocketCb(params: TtsConfig): Promise<SocketEvent> {
+    const socket = await createWebsocket(this.url(params));
+
     let wasClosed = false;
     let messageCount = 0;
     let messagesComplete = createResolvablePromise<boolean>();
     let messagesRejectTimeout: NodeJS.Timeout | undefined;
 
+    let onClose: OnClose = () => {};
     let onMessage: OnMessage = () => {};
-
-    const socket = await createWebsocket(this.url(params));
 
     socket.onMessage((message) => {
       const data = JSON.parse(message.data.toString()).data;
@@ -148,10 +151,15 @@ export class Tts {
       }
     });
 
-    socket.onClose(() => {
-      wasClosed = true;
+    const close = () => {
       clearTimeout(messagesRejectTimeout);
       messagesComplete[1](messageCount == 0);
+    };
+
+    socket.onClose(() => {
+      wasClosed = true;
+      close();
+      onClose();
     });
 
     return {
@@ -176,17 +184,58 @@ export class Tts {
       waitForMessages() {
         return messagesComplete[0];
       },
+      onClose(cb) {
+        onClose = cb;
+      },
       async close() {
         wasClosed = true;
+        close();
         return socket.close();
       }
     };
   }
 
   async websocket(params: TtsConfig): Promise<Socket> {
-    const socket = await createWebsocket(this.url(params));
+    const init = async () => {
+      const newSocket = await createWebsocket(this.url(params));
+
+      newSocket.onMessage((message) => {
+        if (!pendings) {
+          return;
+        }
+
+        const pending = pendings[pendings.length - 1];
+
+        if (!pending) {
+          return;
+        }
+
+        const data = JSON.parse(message.data.toString()).data;
+
+        pending[1]({
+          sampling_rate: data.sampling_rate,
+          audio: Base64.toUint8Array(data.audio),
+          text: data.text,
+          stop: data.stop
+        });
+
+        if (!data.stop) {
+          pendings.push(createResolvablePromise());
+        }
+      });
+
+      newSocket.onClose(() => {
+        wasTimedout = true;
+        close();
+      });
+
+      return newSocket;
+    };
+
+    let socket = await init();
 
     let wasClosed = false;
+    let wasTimedout = false;
     let pendings: Resolvable<TtsMessage | undefined>[] | undefined;
 
     const getMessage = async () => {
@@ -202,52 +251,28 @@ export class Tts {
 
       const message = await pending[0];
 
-      pendings.shift();
+      if (pendings) {
+        pendings.shift();
+      }
 
       return message;
     };
 
     const close = () => {
-      wasClosed = true;
       pendings?.forEach((pending) => {
         pending[1](undefined);
       });
       pendings = undefined;
     };
 
-    socket.onMessage((message) => {
-      if (!pendings) {
-        return;
-      }
-
-      const pending = pendings[pendings.length - 1];
-
-      if (!pending) {
-        return;
-      }
-
-      const data = JSON.parse(message.data.toString()).data;
-
-      pending[1]({
-        sampling_rate: data.sampling_rate,
-        audio: Base64.toUint8Array(data.audio),
-        text: data.text,
-        stop: data.stop
-      });
-
-      if (!data.stop) {
-        pendings.push(createResolvablePromise());
-      }
-    });
-
-    socket.onClose(() => {
-      close();
-    });
-
     return {
       async *send(message) {
         if (wasClosed) {
           throw errClosed();
+        }
+        if (wasTimedout) {
+          socket = await init();
+          wasTimedout = false;
         }
         if (pendings) {
           throw createErr('TtsError', 'Still receiving the messages');
@@ -274,6 +299,7 @@ export class Tts {
         }
       },
       async close() {
+        wasClosed = true;
         close();
         return socket.close();
       }
