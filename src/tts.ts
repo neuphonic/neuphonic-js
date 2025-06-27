@@ -307,10 +307,26 @@ export class Tts {
   }
 }
 
+export type PlayerMetrics = {
+  connect: number;
+  firstByte: number;
+};
+
 export type Player = {
-  play: (message: string) => void;
+  play: (message: string, onEnd?: () => void) => Promise<Uint8Array>;
   stop: () => void;
+  pause: () => void;
+  resume: () => void;
+  replay: (onEnd?: () => void) => void;
   close: () => Promise<void>;
+  metrics: () => PlayerMetrics;
+};
+
+type Track = {
+  audio: Uint8Array;
+  track: AudioBufferSourceNode & {
+    buffer: AudioBuffer;
+  };
 };
 
 export class BrowserTts extends Tts {
@@ -323,7 +339,11 @@ export class BrowserTts extends Tts {
   }
 
   async player(params: TtsConfig): Promise<Player> {
+
+    const startTime = Date.now();
     const socket = await this.websocket(params);
+    const connectTime = Date.now() - startTime;
+
     let audioCtx: AudioContext | undefined;
 
     const ctx = () => {
@@ -337,16 +357,68 @@ export class BrowserTts extends Tts {
       return audioCtx;
     };
 
+    const makeAudio = (tracks: Track[]) => {
+      const audioChunks = tracks.map(({ audio }) => audio);
+
+      let offset = 0;
+
+      const byteLen = audioChunks.reduce(
+        (byteLen, chunk) => byteLen + chunk.byteLength,
+        0
+      );
+
+      const allAudio = new Uint8Array(byteLen);
+      audioChunks.forEach((chunk) => {
+        allAudio.set(new Uint8Array(chunk), offset);
+        offset += chunk.byteLength;
+      });
+
+      return allAudio;
+    };
+
+    const onLastTrackEnd = (onEnd?: () => void) => {
+      if (!onEnd) {
+        return;
+      }
+
+      if (stoped) {
+        onEnd();
+      } else {
+        const lastTrack = tracks[tracks.length - 1];
+        if (!lastTrack) {
+          return;
+        }
+
+        lastTrack.track.onended = () => {
+          const delay = (ctx().currentTime - duration) * 1000;
+
+          if (delay < 1) {
+            onEnd();
+          } else {
+            setTimeout(() => onEnd(), delay);
+          }
+        };
+      }
+    };
+
+    let firstByteTime = 0;
     let duration = 0;
     let stoped = false;
-    let tracks: AudioBufferSourceNode[] = [];
+    let tracks: Track[] = [];
 
     return {
-      async play(message: string) {
+      async play(message: string, onEnd?: () => void) {
+        const startPlayTime = Date.now();
+
         tracks = [];
         stoped = false;
+        firstByteTime = 0;
 
         for await (const chunk of socket.send(`${message.trim()} <STOP>`)) {
+          if (firstByteTime === 0) {
+            firstByteTime = Date.now() - startPlayTime;
+          }
+
           if (stoped) {
             break;
           }
@@ -357,37 +429,64 @@ export class BrowserTts extends Tts {
             params.output_format,
             params.sampling_rate
           );
-          tracks.push(track);
 
           track.connect(ctx().destination);
 
           duration = Math.max(ctx().currentTime, duration);
+
+          tracks.push({ audio: chunk.audio, track });
 
           track.start(duration);
 
           duration += track.buffer.duration;
         }
 
-        const lastTrack = tracks[tracks.length - 1];
+        onLastTrackEnd(onEnd);
 
-        if (lastTrack) {
-          await new Promise<void>((resolve) => {
-            lastTrack.onended = () => {
-              const delay = (ctx().currentTime - duration) * 1000;
-
-              if (delay < 1) {
-                resolve();
-              } else {
-                setTimeout(() => resolve(), delay);
-              }
-            };
-          });
-        }
+        return makeAudio(tracks);
       },
       stop() {
         stoped = true;
-        tracks.forEach((track) => track.stop());
+        tracks.forEach(({ track }) => track.stop());
         duration = ctx().currentTime;
+      },
+      async replay(onEnd?: () => void) {
+        stoped = false;
+
+        const audio = makeAudio(tracks);
+        const track = await createTrack(
+          audio.buffer,
+          ctx(),
+          params.output_format,
+          params.sampling_rate
+        );
+        tracks = [{ audio, track }];
+
+        track.connect(ctx().destination);
+
+        duration = Math.max(ctx().currentTime, duration);
+
+        track.start(duration);
+
+        duration += track.buffer.duration;
+
+        onLastTrackEnd(onEnd);
+      },
+      pause() {
+        if (ctx().state === 'running') {
+          ctx().suspend();
+        }
+      },
+      resume() {
+        if (ctx().state === 'suspended') {
+          ctx().resume();
+        }
+      },
+      metrics() {
+        return {
+          connect: connectTime,
+          firstByte: firstByteTime
+        };
       },
       async close() {
         await socket.close();
