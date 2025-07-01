@@ -3,7 +3,7 @@ import { Agent } from './agent';
 import { TtsConfig } from './common';
 import { baseURL, mergeConfig } from './config';
 import { Transport } from './transport';
-import { BrowserTts } from './tts';
+import { BrowserTts } from './ttsBrowser';
 
 export interface PublicClientConfig {
   baseURL: string;
