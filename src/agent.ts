@@ -4,7 +4,12 @@ import { Transport } from './transport';
 import { createWebsocket } from './socket';
 import { createTrack } from './audio';
 import { TtsConfig } from './common';
-import { AgentWebSocketResponse, AgentConfig } from './agent-base';
+import {
+  AgentWebSocketResponse,
+  AgentConfig,
+  AgentSettings,
+  normalizeAgentConfig
+} from './agent-base';
 
 type OnData = (data: Blob) => void;
 type onText = (role: 'user' | 'assistant', text: string) => void;
@@ -26,7 +31,7 @@ export type AgentResult = {
 };
 
 export class Agent {
-  readonly agentConfig: AgentConfig;
+  readonly agentConfig: AgentSettings;
   readonly ttsConfig: TtsConfig;
   readonly streamConfig: MediaStreamConstraints;
 
@@ -40,10 +45,7 @@ export class Agent {
     streamConfig: MediaStreamConstraints = {}
   ) {
     this.transport = transport;
-    this.agentConfig = {
-      incoming_mode: 'bytes',
-      ...agentConfig
-    };
+    this.agentConfig = normalizeAgentConfig(agentConfig);
     this.ttsConfig = ttsConfig;
 
     this.streamConfig = {

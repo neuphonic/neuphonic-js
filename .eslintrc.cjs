@@ -17,5 +17,7 @@ module.exports = {
   parserOptions: {
     sourceType: 'module'
   },
-  rules: {}
+  rules: {
+     "@typescript-eslint/no-this-alias": "off"
+  }
 };
