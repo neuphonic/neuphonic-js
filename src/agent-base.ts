@@ -41,6 +41,11 @@ export interface AgentConfig {
   return_sampling_rate?: TtsConfig['sampling_rate'];
   incoming_encoding?: string;
   return_encoding?: string;
+  mcp_servers?: string | string[];
+}
+
+export interface AgentSettings extends AgentConfig {
+  mcp_servers?: string;
 }
 
 export type AgentOnMessage = (data: AgentWebSocketResponse) => void;
@@ -51,8 +56,20 @@ export type AgentResult = {
   stop: () => Promise<void>;
 };
 
+export const normalizeAgentConfig = (config: AgentConfig): AgentSettings => {
+  config = {
+    incoming_mode: 'bytes',
+    ...config
+  };
+
+  if (Array.isArray(config.mcp_servers)) {
+    config.mcp_servers = config.mcp_servers.join(',');
+  }
+  return config as AgentSettings;
+};
+
 export class AgentBase {
-  readonly agentConfig: AgentConfig;
+  readonly agentConfig: AgentSettings;
   readonly ttsConfig: TtsConfig;
 
   private transport: Transport;
@@ -64,10 +81,8 @@ export class AgentBase {
     ttsConfig: TtsConfig = {}
   ) {
     this.transport = transport;
-    this.agentConfig = {
-      incoming_mode: 'bytes',
-      ...agentConfig
-    };
+    this.agentConfig = normalizeAgentConfig(agentConfig);
+
     this.ttsConfig = ttsConfig;
   }
 

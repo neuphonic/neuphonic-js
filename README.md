@@ -30,6 +30,7 @@ If you need support or want to join the community, visit our [Discord](https://d
 - [Client side](#client-side)
   - [Authentication](#authentication)
   - [Using agents](#using-agents)
+  - [Connecting MCP Servers](#connecting-mcp-servers)
 
 ## Examples
 Example applications can be found in a separate repository: https://github.com/neuphonic/neuphonic-js-examples.
@@ -334,4 +335,11 @@ chat.onAudio(async (audio) => {
   // Indicates whether audio is currently playing (true) or not (false)
   console.log(audio);
 });
+```
+
+### Connecting MCP Servers
+You can connect MCP servers to your Agent to provide it with any functionality you need.
+
+```typescript
+client.createAgent({ agent_id: '<AGENT ID>', mcp_servers: ['https://f745add9e6f1.ngrok-free.app/sse'] });
 ```
