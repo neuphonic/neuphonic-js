@@ -6,7 +6,10 @@ import { voiceFile, Reading } from './files';
 export const Voice = z.object({
   id: z.string(),
   name: z.string(),
-  tags: z.array(z.string()).nullish().transform((val) => val ?? undefined),
+  tags: z
+    .array(z.string())
+    .nullish()
+    .transform((val) => val ?? undefined),
   model_availability: z.array(z.string()).optional(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -23,13 +26,6 @@ const VoiceError = z.object({
 const VoiceListResponse = z.union([
   z.object({
     data: z.object({ voices: z.array(Voice) })
-  }),
-  VoiceError
-]);
-
-const VoiceGetResponse = z.union([
-  z.object({
-    data: z.object({ voice: Voice })
   }),
   VoiceError
 ]);
@@ -99,21 +95,21 @@ export class Voices {
   }
 
   async get(params: IdOrName): Promise<Voice> {
-    const id = await this.nameOrId(params);
+    const voices = await this.list();
 
-    if (!id && params.name) {
-      throw new Error('Can not find a voice by name');
+    const voice = voices.find((voice) => {
+      if (params.name) {
+        return (voice.name = params.name);
+      } else {
+        return (voice.id = params.id as string);
+      }
+    });
+
+    if (!voice) {
+      throw new Error('Voice not found');
     }
 
-    const response = await this.transport.request({ url: `voices/${id}` });
-
-    const { data: result } = VoiceGetResponse.safeParse(response);
-
-    if (result && 'data' in result) {
-      return result.data.voice;
-    }
-
-    throw new Error('Unknown get voice error');
+    return voice;
   }
 
   async clone({
