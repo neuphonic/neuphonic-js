@@ -3,7 +3,6 @@ import z from 'zod';
 import { TtsConfig } from './common';
 import { Transport } from './transport';
 import { Voices } from './voices';
-import { AgentConfig, AgentBase } from './agent-base';
 import { Agents } from './agents';
 import { Tts } from './tts';
 import { getEnvs } from './env';
@@ -49,10 +48,6 @@ export class Client {
     }
 
     throw new Error('Unknown get jwt token error');
-  }
-
-  createBaseAgent(config: AgentConfig, ttsConfig: TtsConfig = {}) {
-    return new AgentBase(this.transport, config, ttsConfig);
   }
 }
 

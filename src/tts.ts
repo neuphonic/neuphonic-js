@@ -116,13 +116,10 @@ export class Tts {
   }
 
   protected url(params: Record<string, string | number>) {
-    const u = this.transport.url('wss', `speak/${params['lang_code'] || 'en'}`, {
+    return this.transport.url('wss', `speak/${params['lang_code'] || 'en'}`, {
       ...params,
       api_key: this.transport.config.apiKey
     });
-
-    console.log(u);
-    return u
   }
 
   async websocketCb(params: TtsConfig): Promise<SocketEvent> {
