@@ -1,6 +1,5 @@
 import z from 'zod';
 
-import { TtsConfig } from './common';
 import { Transport } from './transport';
 import { Voices } from './voices';
 import { Agents } from './agents';

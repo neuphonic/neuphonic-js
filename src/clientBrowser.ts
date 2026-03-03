@@ -1,4 +1,3 @@
-import { TtsConfig } from './common';
 import { baseURL, mergeConfig } from './config';
 import { Transport } from './transport';
 import { BrowserTts } from './ttsBrowser';
