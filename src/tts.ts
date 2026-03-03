@@ -13,7 +13,10 @@ export type Sse = {
 };
 
 export type Socket = {
-  send: (message: string) => AsyncGenerator<TtsMessage>;
+  send: (
+    message: string,
+    params?: { context_id?: string }
+  ) => AsyncGenerator<TtsMessage>;
   close: () => Promise<void>;
 };
 
@@ -21,7 +24,7 @@ export type OnMessage = (data: TtsMessage) => void;
 export type OnClose = () => void;
 
 export type SocketEvent = {
-  send: (message: string) => void;
+  send: (message: string, params?: { context_id?: string }) => void;
   onMessage: (cb: OnMessage) => void;
   waitForMessages: () => Promise<boolean>;
   onClose: (cb: OnClose) => void;
@@ -113,10 +116,13 @@ export class Tts {
   }
 
   protected url(params: Record<string, string | number>) {
-    return this.transport.url('wss', `speak/${params['lang_code'] || 'en'}`, {
+    const u = this.transport.url('wss', `speak/${params['lang_code'] || 'en'}`, {
       ...params,
       api_key: this.transport.config.apiKey
     });
+
+    console.log(u);
+    return u
   }
 
   async websocketCb(params: TtsConfig): Promise<SocketEvent> {
@@ -137,7 +143,8 @@ export class Tts {
         sampling_rate: data.sampling_rate,
         audio: Base64.toUint8Array(data.audio),
         text: data.text,
-        stop: data.stop
+        stop: data.stop,
+        context_id: data.context_id
       });
 
       if (data.stop) {
@@ -163,7 +170,7 @@ export class Tts {
     });
 
     return {
-      send(message) {
+      send(message, params = {}) {
         if (wasClosed) {
           throw errClosed();
         }
@@ -176,7 +183,7 @@ export class Tts {
           messagesComplete[1](false);
         }, delay);
 
-        socket.send(message);
+        socket.send(JSON.stringify({ text: message, ...params }));
       },
       async onMessage(cb) {
         onMessage = cb;
@@ -212,15 +219,20 @@ export class Tts {
 
         const data = JSON.parse(message.data.toString()).data;
 
-        pending[1]({
-          sampling_rate: data.sampling_rate,
-          audio: Base64.toUint8Array(data.audio),
-          text: data.text,
-          stop: data.stop
-        });
+        const messageContextId = data.context_id;
 
-        if (!data.stop) {
-          pendings.push(createResolvablePromise());
+        if (!messageContextId || messageContextId === contextId) {
+          pending[1]({
+            sampling_rate: data.sampling_rate,
+            audio: Base64.toUint8Array(data.audio),
+            text: data.text,
+            stop: data.stop,
+            context_id: messageContextId
+          });
+
+          if (!data.stop) {
+            pendings.push(createResolvablePromise());
+          }
         }
       });
 
@@ -236,6 +248,7 @@ export class Tts {
 
     let wasClosed = false;
     let wasTimedout = false;
+    let contextId = '';
     let pendings: Resolvable<TtsMessage | undefined>[] | undefined;
 
     const getMessage = async () => {
@@ -266,7 +279,7 @@ export class Tts {
     };
 
     return {
-      async *send(message) {
+      async *send(message, params = {}) {
         if (wasClosed) {
           throw errClosed();
         }
@@ -280,7 +293,11 @@ export class Tts {
 
         pendings = [createResolvablePromise()];
 
-        socket.send(message);
+        contextId = Math.random().toString(36).substr(2, 9);
+
+        socket.send(
+          JSON.stringify({ text: message, context_id: contextId, ...params })
+        );
 
         try {
           while (!wasClosed) {
@@ -295,6 +312,7 @@ export class Tts {
             }
           }
         } finally {
+          contextId = '';
           pendings = undefined;
         }
       },
