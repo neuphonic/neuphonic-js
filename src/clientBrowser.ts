@@ -1,6 +1,3 @@
-import { AgentConfig } from './agent-base';
-import { Agent } from './agent';
-import { TtsConfig } from './common';
 import { baseURL, mergeConfig } from './config';
 import { Transport } from './transport';
 import { BrowserTts } from './ttsBrowser';
@@ -25,18 +22,6 @@ export class PublicClient {
 
   jwt(token: string) {
     this.transport.jwt(token);
-  }
-
-  createAgent(
-    config: AgentConfig,
-    ttsConfig: TtsConfig = {},
-    streamConfig: MediaStreamConstraints = {}
-  ) {
-    if (!this.transport.config.jwtToken && !this.transport.config.apiKey) {
-      throw new Error('JWT token or API key is required');
-    }
-
-    return new Agent(this.transport, config, ttsConfig, streamConfig);
   }
 }
 

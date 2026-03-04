@@ -3,6 +3,7 @@ export type TtsMessage = {
   text: string;
   sampling_rate: number;
   stop: boolean;
+  context_id?: string;
 };
 
 export type TtsConfig = {
