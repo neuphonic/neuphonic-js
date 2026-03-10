@@ -6,12 +6,14 @@ export type TtsMessage = {
   context_id?: string;
 };
 
+export type SampleRate = 8000 | 16000 | 22050 | 24000;
+
 export type TtsConfig = {
   voice_id?: string;
   speed?: number;
   temperature?: number;
   lang_code?: string;
-  sampling_rate?: 8000 | 16000 | 22050;
+  sampling_rate?: SampleRate;
   encoding?: string;
   output_format?: 'wav' | 'mp3';
 };
