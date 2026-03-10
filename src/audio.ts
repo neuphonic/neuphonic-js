@@ -66,7 +66,7 @@ export const toWav = (audioBytes: Uint8Array, sampleRate = 22050) => {
 const createBuffer = (
   buffer: ArrayBufferLike,
   context: AudioContext,
-  samplingRate: number = 22050
+  samplingRate: number = 24000
 ) => {
   const orig = new Int16Array(buffer);
   const converted = new Float32Array(orig.length);
@@ -85,7 +85,7 @@ export const createTrack = async (
   buffer: ArrayBufferLike,
   context: AudioContext,
   format: 'wav' | 'mp3' = 'wav',
-  samplingRate: number = 22050
+  samplingRate: number = 24000
 ) => {
   const track = context.createBufferSource();
 
